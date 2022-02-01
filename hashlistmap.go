@@ -1,9 +1,6 @@
 package embedded
 
 import (
-	"constraints"
-	"fmt"
-	"hash/fnv"
 	"unsafe"
 )
 
@@ -12,7 +9,7 @@ import (
 // This cointainer does not take ownership of its contents, so the application
 // must remove items manually.
 
-type HashListMap[TKey HashListMapKeyType, T any] interface {
+type HashListMap[TKey HashMapKeyType, T any] interface {
 	First() *T
 	Last() *T
 	Next(cur *T) *T
@@ -49,11 +46,7 @@ type HashListMap[TKey HashListMapKeyType, T any] interface {
 	IsContained(cur *T) bool
 }
 
-type HashListMapKeyType interface {
-	constraints.Ordered
-}
-
-func NewHashListMapStatic[TKey HashListMapKeyType, T any](linkField uintptr, tableSize int) HashListMap[TKey, T] {
+func NewHashListMapStatic[TKey HashMapKeyType, T any](linkField uintptr, tableSize int) HashListMap[TKey, T] {
 	var hlml HashListMapLink[TKey, T]
 	return &embeddedHashListMap[TKey, T]{
 		hashList:  NewHashListStatic[T](linkField+unsafe.Offsetof(hlml.hashList), tableSize),
@@ -61,7 +54,7 @@ func NewHashListMapStatic[TKey HashListMapKeyType, T any](linkField uintptr, tab
 	}
 }
 
-func NewHashListMapDynamic[TKey HashListMapKeyType, T any](linkField uintptr) HashListMap[TKey, T] {
+func NewHashListMapDynamic[TKey HashMapKeyType, T any](linkField uintptr) HashListMap[TKey, T] {
 	var hlml HashListMapLink[TKey, T]
 	return &embeddedHashListMap[TKey, T]{
 		hashList:  NewHashListDynamic[T](linkField + unsafe.Offsetof(hlml.hashList)),
@@ -69,7 +62,7 @@ func NewHashListMapDynamic[TKey HashListMapKeyType, T any](linkField uintptr) Ha
 	}
 }
 
-type embeddedHashListMap[TKey HashListMapKeyType, T any] struct {
+type embeddedHashListMap[TKey HashMapKeyType, T any] struct {
 	hashList  HashList[T]
 	linkField uintptr
 }
@@ -124,12 +117,12 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAll() {
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveAllByKey(key TKey) {
-	hashValue := c.getHashValue(key)
+	hashValue := newHashKey(key).hash
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
 		u := getHashListMapLink[TKey](cur, c.linkField)
-		if u.key == key {
+		if u.key.value == key {
 			c.hashList.Remove(cur)
 		}
 		cur = next
@@ -137,12 +130,12 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByKey(key TKey) {
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
-	hashValue := c.getHashValue(key)
+	hashValue := newHashKey(key).hash
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
 		u := getHashListMapLink[TKey](cur, c.linkField)
-		if u.key == key {
+		if u.key.value == key {
 			c.hashList.Remove(cur)
 			return
 		}
@@ -151,56 +144,58 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
 }
 
 func (c *embeddedHashListMap[TKey, T]) InsertFirst(key TKey, cur *T) *T {
-	hashValue := c.getHashValue(key)
-	obj := c.hashList.InsertFirst(hashValue, cur)
+	hashedKey := newHashKey(key)
+	obj := c.hashList.InsertFirst(hashedKey.hash, cur)
 	if obj == nil {
 		return nil
 	}
 
 	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = key
+	u.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) InsertLast(key TKey, cur *T) *T {
-	hashValue := c.getHashValue(key)
-	obj := c.hashList.InsertLast(hashValue, cur)
+	hashedKey := newHashKey(key)
+	obj := c.hashList.InsertLast(hashedKey.hash, cur)
 	if obj == nil {
 		return nil
 	}
 
 	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = key
+	u.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) InsertAfter(key TKey, prev, cur *T) *T {
-	hashValue := c.getHashValue(key)
-	obj := c.hashList.InsertAfter(hashValue, prev, cur)
+	hashedKey := newHashKey(key)
+	obj := c.hashList.InsertAfter(hashedKey.hash, prev, cur)
 	if obj == nil {
 		return nil
 	}
 
 	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = key
+	u.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) InsertBefore(key TKey, after, cur *T) *T {
-	hashValue := c.getHashValue(key)
-	obj := c.hashList.InsertBefore(hashValue, after, cur)
+	hashedKey := newHashKey(key)
+	obj := c.hashList.InsertBefore(hashedKey.hash, after, cur)
 	if obj == nil {
 		return nil
 	}
 
 	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = key
+	u.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) Move(obj *T, newKey TKey) {
-	newHashValue := c.getHashValue(newKey)
-	c.hashList.Move(obj, newHashValue)
+	hashedKey := newHashKey(newKey)
+	c.hashList.Move(obj, hashedKey.hash)
+	u := getHashListMapLink[TKey](obj, c.linkField)
+	u.key = hashedKey
 }
 
 func (c *embeddedHashListMap[TKey, T]) MoveFirst(cur *T) {
@@ -220,8 +215,8 @@ func (c *embeddedHashListMap[TKey, T]) MoveBefore(dest, cur *T) {
 }
 
 func (c *embeddedHashListMap[TKey, T]) FindFirst(key TKey) *T {
-	hashValue := c.getHashValue(key)
-	return c.hashList.FindFirst(hashValue)
+	hashedKey := newHashKey(key)
+	return c.hashList.FindFirst(hashedKey.hash)
 }
 
 func (c *embeddedHashListMap[TKey, T]) FindNext(prevResult *T) *T {
@@ -252,19 +247,13 @@ func (c *embeddedHashListMap[TKey, T]) IsContained(cur *T) bool {
 	return c.hashList.IsContained(cur)
 }
 
-func (c *embeddedHashListMap[TKey, T]) getHashValue(key TKey) int {
-	h := fnv.New64()
-	h.Write([]byte(fmt.Sprint(key)))
-	return int(h.Sum64())
-}
-
 // HashListMapLink is a link to the map container
-type HashListMapLink[TKey HashListMapKeyType, T any] struct {
+type HashListMapLink[TKey HashMapKeyType, T any] struct {
 	hashList HashListLink[T]
-	key      TKey
+	key      hashKey[TKey]
 }
 
-func getHashListMapLink[TKey HashListMapKeyType, T any](obj *T, linkFieldOfs uintptr) *HashListMapLink[TKey, T] {
+func getHashListMapLink[TKey HashMapKeyType, T any](obj *T, linkFieldOfs uintptr) *HashListMapLink[TKey, T] {
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*HashListMapLink[TKey, T])(u)
 }

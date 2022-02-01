@@ -9,7 +9,8 @@ Various containers supporting Go Generics that don't own their entities. Instead
 | Name | Description |
 |------|-------------|
 | `embedded.Hash` | A map-style container with hashed value (of `int` type) lookup |
-| `embedded.List` | A list-style container with a doubly-linked interface |
-| `embedded.HashList` | A container with a map combined with a doubly-linked list interface referencing values by a hashed (of `int` type) lookup |
+| `embedded.HashList` | A container combining the mechanisms of `embedded.Hash` and `embedded.List` |
 | `embedded.HashListMap` | A container with a map combined with a doubly-linked list interface. Internally, item keys are hashed (using FNV 64-bit hashing) so the `embedded.HashList` mechanisms can be reused |
+| `embedded.HashMap` | A container combining the mechanisms of `embedded.Hash` and `embedded.Map` without incurring the performance concerns of `embedded.Map` |
+| `embedded.List` | A list-style container with a doubly-linked interface |
 | `embedded.Map` | A map-style container with red-black tree internally |

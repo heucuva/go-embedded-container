@@ -130,8 +130,7 @@ func (c *embeddedHashStatic[T]) WalkFirst() *T {
 func (c *embeddedHashStatic[T]) WalkNext(prevResult *T) *T {
 	entry := prevResult
 	u := getHashLink(entry, c.linkField)
-	hashValue := u.hashValue
-	spot := int(uint(hashValue) % uint(len(c.table)))
+	spot := int(uint(u.hashValue) % uint(len(c.table)))
 	entry = u.hashNext
 	if entry != nil {
 		return entry
