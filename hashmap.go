@@ -50,14 +50,18 @@ type embeddedHashMap[TKey HashMapKeyType, T any] struct {
 	linkField uintptr
 }
 
+func (c *embeddedHashMap[TKey, T]) getLink(obj *T) *HashMapLink[TKey, T] {
+	return getHashMapLink[TKey](obj, c.linkField)
+}
+
 func (c *embeddedHashMap[TKey, T]) Insert(key TKey, obj *T) *T {
 	hashedKey := newHashKey(key)
 	o := c.hash.Insert(hashedKey.hash, obj)
 	if o == nil {
 		return nil
 	}
-	u := getHashMapLink[TKey](o, c.linkField)
-	u.key = hashedKey
+	oU := c.getLink(o)
+	oU.key = hashedKey
 	return o
 }
 
@@ -71,8 +75,8 @@ func (c *embeddedHashMap[TKey, T]) Move(obj *T, newKey TKey) {
 	if obj == nil {
 		return
 	}
-	u := getHashMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 }
 
 func (c *embeddedHashMap[TKey, T]) RemoveAll() {
@@ -84,8 +88,8 @@ func (c *embeddedHashMap[TKey, T]) RemoveAllByKey(key TKey) {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		u := getHashMapLink[TKey](cur, c.linkField)
-		if u.key.value == key {
+		curU := c.getLink(cur)
+		if curU.key.value == key {
 			c.hash.Remove(cur)
 		}
 		cur = next
@@ -97,8 +101,8 @@ func (c *embeddedHashMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		u := getHashMapLink[TKey](cur, c.linkField)
-		if u.key.value == key {
+		curU := c.getLink(cur)
+		if curU.key.value == key {
 			c.hash.Remove(cur)
 			return
 		}
@@ -111,8 +115,8 @@ func (c *embeddedHashMap[TKey, T]) Reserve(count int) {
 }
 
 func (c *embeddedHashMap[TKey, T]) GetKey(obj *T) TKey {
-	u := getHashMapLink[TKey](obj, c.linkField)
-	return u.key.value
+	objU := c.getLink(obj)
+	return objU.key.value
 }
 
 func (c *embeddedHashMap[TKey, T]) Count() int {
@@ -136,8 +140,8 @@ func (c *embeddedHashMap[TKey, T]) FindFirst(key TKey) *T {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		u := getHashMapLink[TKey](cur, c.linkField)
-		if u.key.value == key {
+		curU := c.getLink(cur)
+		if curU.key.value == key {
 			return cur
 		}
 		cur = next
@@ -146,12 +150,12 @@ func (c *embeddedHashMap[TKey, T]) FindFirst(key TKey) *T {
 }
 
 func (c *embeddedHashMap[TKey, T]) FindNext(prevResult *T) *T {
-	u := getHashMapLink[TKey](prevResult, c.linkField)
+	prevResultU := c.getLink(prevResult)
 	cur := c.hash.FindNext(prevResult)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		v := getHashMapLink[TKey](cur, c.linkField)
-		if u.key.value == v.key.value {
+		v := c.getLink(cur)
+		if prevResultU.key.value == v.key.value {
 			return cur
 		}
 		cur = next

@@ -2,7 +2,6 @@ package embedded
 
 import (
 	"constraints"
-	"unsafe"
 )
 
 // This is a priority queue container - it allows for prioritization of its
@@ -25,7 +24,7 @@ type PriorityQueue[P PriorityType, T any] interface {
 	IsContained(entry *T) bool
 }
 
-type PriorityType interface{
+type PriorityType interface {
 	constraints.Integer | constraints.Float
 }
 
@@ -40,6 +39,10 @@ type embeddedPriorityQueue[P PriorityType, T any] struct {
 	linkField uintptr
 }
 
+func (c *embeddedPriorityQueue[P, T]) getLink(obj *T) *PriorityQueueLink[P] {
+	return getPriorityQueueLink[P](obj, c.linkField)
+}
+
 func (c *embeddedPriorityQueue[P, T]) Top() *T {
 	if len(c.array) == 0 {
 		return nil
@@ -52,8 +55,8 @@ func (c *embeddedPriorityQueue[P, T]) TopWithPriority(priority P) *T {
 		return nil
 	}
 	top := c.array[0]
-	u := getPriorityQueueLink[P](top, c.linkField)
-	if !(priority < u.priority) {
+	topU := c.getLink(top)
+	if !(priority < topU.priority) {
 		return top
 	}
 	return nil
@@ -64,8 +67,8 @@ func (c *embeddedPriorityQueue[P, T]) Remove(entry *T) *T {
 		return entry
 	}
 
-	u := getPriorityQueueLink[P](entry, c.linkField)
-	spot := int(u.position) - 1
+	entryU := c.getLink(entry)
+	spot := int(entryU.position) - 1
 	if spot == -1 {
 		return entry
 	}
@@ -74,11 +77,11 @@ func (c *embeddedPriorityQueue[P, T]) Remove(entry *T) *T {
 	c.array = c.array[:len(c.array)-1]
 	if entry != endEntry {
 		c.array[spot] = endEntry
-		v := getPriorityQueueLink[P](endEntry, c.linkField)
+		v := c.getLink(endEntry)
 		v.position = spot + 1
 		c.refloat(endEntry)
 	}
-	u.position = 0
+	entryU.position = 0
 	return entry
 }
 
@@ -92,8 +95,8 @@ func (c *embeddedPriorityQueue[P, T]) RemoveTopWithPriority(priority P) *T {
 		return nil
 	}
 
-	u := getPriorityQueueLink[P](top, c.linkField)
-	if !(priority < u.priority) {
+	topU := c.getLink(top)
+	if !(priority < topU.priority) {
 		return c.Remove(top)
 	}
 
@@ -120,41 +123,41 @@ func (c *embeddedPriorityQueue[P, T]) IsContained(entry *T) bool {
 }
 
 func (c *embeddedPriorityQueue[P, T]) GetPriority(entry *T) *P {
-	u := getPriorityQueueLink[P](entry, c.linkField)
-	spot := int(u.priority) - 1
+	entryU := c.getLink(entry)
+	spot := int(entryU.priority) - 1
 	if spot >= 0 {
-		return &u.priority
+		return &entryU.priority
 	}
 	return nil
 }
 
 func (c *embeddedPriorityQueue[P, T]) Insert(priority P, entry *T) *T {
-	u := getPriorityQueueLink[P](entry, c.linkField)
-	spot := int(u.position) - 1
+	entryU := c.getLink(entry)
+	spot := int(entryU.position) - 1
 	if spot == -1 {
-		u.priority = priority
-		u.position = len(c.array) + 1
+		entryU.priority = priority
+		entryU.position = len(c.array) + 1
 		c.array = append(c.array, entry)
 	} else {
-		if !(u.priority < priority || priority < u.priority) {
+		if !(entryU.priority < priority || priority < entryU.priority) {
 			return entry
 		}
-		u.priority = priority
+		entryU.priority = priority
 	}
 	c.refloat(entry)
 	return entry
 }
 
 func (c *embeddedPriorityQueue[P, T]) refloat(entry *T) {
-	u := getPriorityQueueLink[P](entry, c.linkField)
-	spot := int(u.position) - 1
+	entryU := c.getLink(entry)
+	spot := int(entryU.position) - 1
 	tryDown := true
 	for spot > 0 {
 		hold := c.array[spot]
-		v := getPriorityQueueLink[P](hold, c.linkField)
+		v := c.getLink(hold)
 		newSpot := (spot - 1) / 2
 		lower := c.array[newSpot]
-		w := getPriorityQueueLink[P](lower, c.linkField)
+		w := c.getLink(lower)
 		if !(v.priority < w.priority) {
 			break
 		}
@@ -174,42 +177,31 @@ func (c *embeddedPriorityQueue[P, T]) refloat(entry *T) {
 				break
 			}
 
-			u := getPriorityQueueLink[P](c.array[spot], c.linkField)
-			v := getPriorityQueueLink[P](c.array[downSpot1], c.linkField)
+			curU := c.getLink(c.array[spot])
+			downSpot1U := c.getLink(c.array[downSpot1])
 
 			downSpot2 := (spot * 2) + 2
-			var w *PriorityQueueLink[P]
+			var downSpot2U *PriorityQueueLink[P]
 			if downSpot2 < len(c.array) {
-				w = getPriorityQueueLink[P](c.array[downSpot2], c.linkField)
+				downSpot2U = c.getLink(c.array[downSpot2])
 			}
-			if w == nil || v.priority < w.priority {
-				if !(v.priority < u.priority) {
+			if downSpot2U == nil || downSpot1U.priority < downSpot2U.priority {
+				if !(downSpot1U.priority < curU.priority) {
 					break
 				}
 
 				c.array[spot], c.array[downSpot1] = c.array[downSpot1], c.array[spot]
-				u.position, v.position = downSpot1+1, spot+1
+				curU.position, downSpot1U.position = downSpot1+1, spot+1
 				spot = downSpot1
 			} else {
-				if !(w.priority < u.priority) {
+				if !(downSpot2U.priority < curU.priority) {
 					break
 				}
 
 				c.array[spot], c.array[downSpot2] = c.array[downSpot2], c.array[spot]
-				u.position, w.position = downSpot2+1, spot+1
+				curU.position, downSpot2U.position = downSpot2+1, spot+1
 				spot = downSpot2
 			}
 		}
 	}
-}
-
-// PriorityQueueLink is a link to the priority queue container
-type PriorityQueueLink[P PriorityType] struct {
-	position int
-	priority P
-}
-
-func getPriorityQueueLink[P PriorityType, T any](obj *T, linkFieldOfs uintptr) *PriorityQueueLink[P] {
-	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
-	return (*PriorityQueueLink[P])(u)
 }

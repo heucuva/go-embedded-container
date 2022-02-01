@@ -50,14 +50,18 @@ type embeddedMap[TKey MapKeyType, T any] struct {
 	linkField uintptr
 }
 
+func (c *embeddedMap[TKey, T]) getLink(obj *T) *MapLink[TKey, T] {
+	return getMapLink[TKey](obj, c.linkField)
+}
+
 func (c *embeddedMap[TKey, T]) Find(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			walk = u.left
-		} else if u.key < key {
-			walk = u.right
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			walk = walkU.left
+		} else if walkU.key < key {
+			walk = walkU.right
 		} else {
 			return walk
 		}
@@ -68,11 +72,11 @@ func (c *embeddedMap[TKey, T]) Find(key TKey) *T {
 func (c *embeddedMap[TKey, T]) FindFirst(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			walk = u.left
-		} else if u.key < key {
-			walk = u.right
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			walk = walkU.left
+		} else if walkU.key < key {
+			walk = walkU.right
 		} else {
 			left := c.Prev(walk)
 			for left != nil && c.GetKey(left) == key {
@@ -96,15 +100,15 @@ func (c *embeddedMap[TKey, T]) FindNext(cur *T) *T {
 func (c *embeddedMap[TKey, T]) FindLowerInclusive(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			left := u.left
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			left := walkU.left
 			if left == nil {
 				return c.Prev(walk)
 			}
 			walk = left
-		} else if u.key < key {
-			right := u.right
+		} else if walkU.key < key {
+			right := walkU.right
 			if right == nil {
 				return walk
 			}
@@ -124,15 +128,15 @@ func (c *embeddedMap[TKey, T]) FindLowerInclusive(key TKey) *T {
 func (c *embeddedMap[TKey, T]) FindUpperInclusive(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			left := u.left
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			left := walkU.left
 			if left == nil {
 				return walk
 			}
 			walk = left
-		} else if u.key < key {
-			right := u.right
+		} else if walkU.key < key {
+			right := walkU.right
 			if right == nil {
 				return c.Next(walk)
 			}
@@ -152,15 +156,15 @@ func (c *embeddedMap[TKey, T]) FindUpperInclusive(key TKey) *T {
 func (c *embeddedMap[TKey, T]) FindLowerExclusive(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			left := u.left
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			left := walkU.left
 			if left == nil {
 				return c.Prev(walk)
 			}
 			walk = left
-		} else if u.key < key {
-			right := u.right
+		} else if walkU.key < key {
+			right := walkU.right
 			if right == nil {
 				return walk
 			}
@@ -185,15 +189,15 @@ func (c *embeddedMap[TKey, T]) FindLowerExclusive(key TKey) *T {
 func (c *embeddedMap[TKey, T]) FindUpperExclusive(key TKey) *T {
 	walk := c.root
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			left := u.left
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			left := walkU.left
 			if left == nil {
 				return walk
 			}
 			walk = left
-		} else if u.key < key {
-			right := u.right
+		} else if walkU.key < key {
+			right := walkU.right
 			if right == nil {
 				return c.Next(walk)
 			}
@@ -220,7 +224,7 @@ func (c *embeddedMap[TKey, T]) First() *T {
 	cur := c.root
 	for cur != nil {
 		prev = cur
-		cur = getMapLink[TKey](cur, c.linkField).left
+		cur = c.getLink(cur).left
 	}
 	return prev
 }
@@ -230,51 +234,51 @@ func (c *embeddedMap[TKey, T]) Last() *T {
 	cur := c.root
 	for cur != nil {
 		prev = cur
-		cur = getMapLink[TKey](cur, c.linkField).right
+		cur = c.getLink(cur).right
 	}
 	return prev
 }
 
 func (c *embeddedMap[TKey, T]) Next(cur *T) *T {
-	u := getMapLink[TKey](cur, c.linkField)
-	if u.right != nil {
-		walk := u.right
+	curU := c.getLink(cur)
+	if curU.right != nil {
+		walk := curU.right
 		for {
-			v := getMapLink[TKey](walk, c.linkField)
-			if v.left == nil {
+			walkU := c.getLink(walk)
+			if walkU.left == nil {
 				break
 			}
-			walk = v.left
+			walk = walkU.left
 		}
 		return walk
 	}
 
-	p := u.parent
-	for p != nil && getMapLink[TKey](p, c.linkField).right == cur {
+	p := curU.parent
+	for p != nil && c.getLink(p).right == cur {
 		cur = p
-		p = getMapLink[TKey](cur, c.linkField).parent
+		p = c.getLink(cur).parent
 	}
 	return p
 }
 
 func (c *embeddedMap[TKey, T]) Prev(cur *T) *T {
-	u := getMapLink[TKey](cur, c.linkField)
-	if u.left != nil {
-		walk := u.left
+	curU := c.getLink(cur)
+	if curU.left != nil {
+		walk := curU.left
 		for {
-			v := getMapLink[TKey](walk, c.linkField)
-			if v.right == nil {
+			walkU := c.getLink(walk)
+			if walkU.right == nil {
 				break
 			}
-			walk = v.right
+			walk = walkU.right
 		}
 		return walk
 	}
 
-	p := u.parent
-	for p != nil && getMapLink[TKey](p, c.linkField).left == cur {
+	p := curU.parent
+	for p != nil && c.getLink(p).left == cur {
 		cur = p
-		p = getMapLink[TKey](cur, c.linkField).parent
+		p = c.getLink(cur).parent
 	}
 	return p
 }
@@ -284,15 +288,15 @@ func (c *embeddedMap[TKey, T]) GetPosition(obj *T) int {
 	prev := walk
 	position := 0
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if u.left != prev {
-			if u.left != nil {
-				position += getMapLink[TKey](u.left, c.linkField).position
+		waklU := c.getLink(walk)
+		if waklU.left != prev {
+			if waklU.left != nil {
+				position += c.getLink(waklU.left).position
 			}
 			position++
 		}
 		prev = walk
-		walk = u.parent
+		walk = waklU.parent
 	}
 	return position - 1
 }
@@ -301,24 +305,24 @@ func (c *embeddedMap[TKey, T]) Position(index int) *T {
 	walk := c.root
 	walkIndex := 0
 	if walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
-		if u.left != nil {
-			walkIndex = getMapLink[TKey](u.left, c.linkField).position
+		walkU := c.getLink(walk)
+		if walkU.left != nil {
+			walkIndex = c.getLink(walkU.left).position
 		}
 	}
 	for walk != nil {
-		u := getMapLink[TKey](walk, c.linkField)
+		walkU := c.getLink(walk)
 		if index < walkIndex {
-			walk = u.left
+			walk = walkU.left
 			walkIndex--
-			if u.right != nil {
-				walkIndex -= getMapLink[TKey](u.right, c.linkField).position
+			if walkU.right != nil {
+				walkIndex -= c.getLink(walkU.right).position
 			}
 		} else if walkIndex < index {
-			walk = u.right
+			walk = walkU.right
 			walkIndex++
-			if u.left != nil {
-				walkIndex -= getMapLink[TKey](u.left, c.linkField).position
+			if walkU.left != nil {
+				walkIndex -= c.getLink(walkU.left).position
 			}
 		} else {
 			return walk
@@ -333,95 +337,95 @@ func (c *embeddedMap[TKey, T]) Insert(key TKey, obj *T) *T {
 	walk := c.root
 	for walk != nil {
 		parent = walk
-		getMapLink[TKey](parent, c.linkField).position++
-		u := getMapLink[TKey](walk, c.linkField)
-		if key < u.key {
-			parentBranch = &u.left
+		c.getLink(parent).position++
+		walkU := c.getLink(walk)
+		if key < walkU.key {
+			parentBranch = &walkU.left
 			walk = *parentBranch
-		} else if u.key < key {
-			parentBranch = &u.right
+		} else if walkU.key < key {
+			parentBranch = &walkU.right
 			walk = *parentBranch
 		}
 	}
 
 	*parentBranch = obj
-	u := getMapLink[TKey](obj, c.linkField)
-	u.parent = parent
-	u.left = nil
-	u.right = nil
-	u.red = true
-	u.position = 1
-	u.key = key
+	objU := c.getLink(obj)
+	objU.parent = parent
+	objU.left = nil
+	objU.right = nil
+	objU.red = true
+	objU.position = 1
+	objU.key = key
 	c.count++
 	c.insertFixup(obj)
 	return obj
 }
 
 func (c *embeddedMap[TKey, T]) Remove(obj *T) *T {
-	u := getMapLink[TKey](obj, c.linkField)
-	if u.left != nil && u.right != nil {
+	objU := c.getLink(obj)
+	if objU.left != nil && objU.right != nil {
 		succ := c.Next(obj)
-		curParent := u.parent
-		curLeft := u.left
-		curRight := u.right
-		curRed := u.red
+		curParent := objU.parent
+		curLeft := objU.left
+		curRight := objU.right
+		curRed := objU.red
 		curParentChild := &c.root
 		if curParent != nil {
-			v := getMapLink[TKey](curParent, c.linkField)
-			if v.left == obj {
-				curParentChild = &v.left
+			curParentU := c.getLink(curParent)
+			if curParentU.left == obj {
+				curParentChild = &curParentU.left
 			} else {
-				curParentChild = &v.right
+				curParentChild = &curParentU.right
 			}
 		}
 
-		v := getMapLink[TKey](succ, c.linkField)
-		succParent := v.parent
-		succLeft := v.left
-		succRight := v.right
-		succRed := v.red
-		w := getMapLink[TKey](succParent, c.linkField)
-		succParentChild := &w.right
-		if w.left == succ {
-			succParentChild = &w.left
+		succU := c.getLink(succ)
+		succParent := succU.parent
+		succLeft := succU.left
+		succRight := succU.right
+		succRed := succU.red
+		succParentU := c.getLink(succParent)
+		succParentChild := &succParentU.right
+		if succParentU.left == succ {
+			succParentChild = &succParentU.left
 		}
 
-		u.position, v.position = v.position, u.position
+		objU.position, succU.position = succU.position, objU.position
 
-		u.left, u.right, u.red = succLeft, succRight, succRed
-		v.parent = curParent
-		v.left, v.right, v.red = curLeft, curRight, curRed
-		u.parent = succ
+		objU.left, objU.right, objU.red = succLeft, succRight, succRed
+		succU.parent = curParent
+		succU.left, succU.right, succU.red = curLeft, curRight, curRed
+		objU.parent = succ
 		*curParentChild = succ
 		if succRight != nil {
-			getMapLink[TKey](succRight, c.linkField).parent = obj
+			c.getLink(succRight).parent = obj
 		}
 
 		if succParent == obj {
-			u.parent = succ
-			v.right = obj
+			objU.parent = succ
+			succU.right = obj
 		} else {
-			u.parent = succParent
+			objU.parent = succParent
 			*succParentChild = obj
-			v.right = curRight
-			getMapLink[TKey](curRight, c.linkField).parent = succ
+			succU.right = curRight
+			c.getLink(curRight).parent = succ
 		}
 	}
 
-	if u.red {
+	if objU.red {
 		c.cutNode(obj)
 	} else {
-		if u.left == nil && u.right == nil {
+		if objU.left == nil && objU.right == nil {
 			c.removeFixup(obj)
 			c.cutNode(obj)
 		} else {
-			child := u.left
-			if u.right != nil {
-				child = u.right
+			child := objU.left
+			if objU.right != nil {
+				child = objU.right
 			}
-			x := getMapLink[TKey](child, c.linkField)
-			if x.red {
-				x.red = false
+			childU := c.getLink(child)
+			if childU.red {
+				childU.red = false
 				c.cutNode(obj)
 			} else {
 				c.cutNode(obj)
@@ -456,7 +460,7 @@ func (c *embeddedMap[TKey, T]) Move(cur *T, newKey TKey) {
 }
 
 func (c *embeddedMap[TKey, T]) GetKey(obj *T) TKey {
-	return getMapLink[TKey](obj, c.linkField).key
+	return c.getLink(obj).key
 }
 
 func (c *embeddedMap[TKey, T]) Count() int {
@@ -484,44 +488,44 @@ func (c *embeddedMap[TKey, T]) IsContained(obj *T) bool {
 }
 
 func (c *embeddedMap[TKey, T]) insertFixup(cur *T) {
-	u := getMapLink[TKey](cur, c.linkField)
-	if u.parent == nil {
-		u.red = false
-	} else if v := getMapLink[TKey](u.parent, c.linkField); v.red {
-		parent := u.parent
-		grand := v.parent
-		w := getMapLink[TKey](grand, c.linkField)
-		uncle := w.right
-		if w.left == parent {
-			uncle = w.left
+	curU := c.getLink(cur)
+	if curU.parent == nil {
+		curU.red = false
+	} else if parentU := c.getLink(curU.parent); parentU.red {
+		parent := curU.parent
+		grand := parentU.parent
+		grandU := c.getLink(grand)
+		uncle := grandU.right
+		if grandU.left == parent {
+			uncle = grandU.left
 		}
 
-		var x *MapLink[TKey, T]
+		var uncleU *MapLink[TKey, T]
 		if uncle != nil {
-			x = getMapLink[TKey](uncle, c.linkField)
+			uncleU = c.getLink(uncle)
 		}
 
-		if x != nil && x.red {
-			v.red = false
-			x.red = false
-			w.red = true
+		if uncleU != nil && uncleU.red {
+			parentU.red = false
+			uncleU.red = false
+			grandU.red = true
 			c.insertFixup(grand)
 		} else {
-			if cur == v.right && parent == w.left {
+			if cur == parentU.right && parent == grandU.left {
 				c.rotateLeft(parent)
-				cur = u.left
-			} else if cur == v.left && parent == w.right {
+				cur = curU.left
+			} else if cur == parentU.left && parent == grandU.right {
 				c.rotateRight(parent)
-				cur = u.right
+				cur = curU.right
 			}
 
-			parent = u.parent
-			v = getMapLink[TKey](parent, c.linkField)
-			grand = v.parent
-			w = getMapLink[TKey](grand, c.linkField)
-			v.red = false
-			w.red = true
-			if cur == v.left && parent == w.left {
+			parent = curU.parent
+			parentU = c.getLink(parent)
+			grand = parentU.parent
+			grandU = c.getLink(grand)
+			parentU.red = false
+			grandU.red = true
+			if cur == parentU.left && parent == grandU.left {
 				c.rotateRight(grand)
 			} else {
 				c.rotateLeft(grand)
@@ -531,84 +535,84 @@ func (c *embeddedMap[TKey, T]) insertFixup(cur *T) {
 }
 
 func (c *embeddedMap[TKey, T]) rotateLeft(cur *T) {
-	u := getMapLink[TKey](cur, c.linkField)
-	r := u.right
-	p := u.parent
-	b := u.left
+	curU := c.getLink(cur)
+	right := curU.right
+	parent := curU.parent
+	left := curU.left
 
-	u.parent = r
-	u.right = b
+	curU.parent = right
+	curU.right = left
 
-	v := getMapLink[TKey](r, c.linkField)
-	v.parent = p
-	v.left = cur
+	rightU := c.getLink(right)
+	rightU.parent = parent
+	rightU.left = cur
 
-	newC := u.position - v.position
-	if b != nil {
-		w := getMapLink[TKey](b, c.linkField)
-		w.parent = cur
-		newC += w.position
+	newC := curU.position - rightU.position
+	if left != nil {
+		leftU := c.getLink(left)
+		leftU.parent = cur
+		newC += leftU.position
 	}
-	v.position = u.position
-	u.position = newC
+	rightU.position = curU.position
+	curU.position = newC
 
-	if p == nil {
-		c.root = r
-	} else if x := getMapLink[TKey](p, c.linkField); x.left == cur {
-		x.left = r
+	if parent == nil {
+		c.root = right
+	} else if parentU := c.getLink(parent); parentU.left == cur {
+		parentU.left = right
 	} else {
-		x.right = r
+		parentU.right = right
 	}
 }
 
 func (c *embeddedMap[TKey, T]) rotateRight(cur *T) {
-	u := getMapLink[TKey](cur, c.linkField)
-	l := u.left
-	p := u.parent
-	b := u.right
+	curU := c.getLink(cur)
+	left := curU.left
+	parent := curU.parent
+	right := curU.right
 
-	u.parent = l
-	u.left = b
+	curU.parent = left
+	curU.left = right
 
-	v := getMapLink[TKey](l, c.linkField)
-	v.parent = p
-	v.right = cur
+	leftU := c.getLink(left)
+	leftU.parent = parent
+	leftU.right = cur
 
-	newC := u.position - v.position
-	if b != nil {
-		w := getMapLink[TKey](b, c.linkField)
-		w.parent = cur
-		newC += w.position
+	newC := curU.position - leftU.position
+	if right != nil {
+		rightU := c.getLink(right)
+		rightU.parent = cur
+		newC += rightU.position
 	}
-	v.position = u.position
-	u.position = newC
+	leftU.position = curU.position
+	curU.position = newC
 
-	if p == nil {
-		c.root = l
-	} else if x := getMapLink[TKey](p, c.linkField); x.right == cur {
-		x.right = l
+	if parent == nil {
+		c.root = left
+	} else if parentU := c.getLink(parent); parentU.right == cur {
+		parentU.right = left
 	} else {
-		x.left = l
+		parentU.left = left
 	}
 }
 
 func (c *embeddedMap[TKey, T]) removeFixup(cur *T) {
-	u := getMapLink[TKey](cur, c.linkField)
-	parent := u.parent
+	curU := c.getLink(cur)
+	parent := curU.parent
 	if parent == nil {
 		return
 	}
 
-	parentU := getMapLink[TKey](parent, c.linkField)
+	parentU := c.getLink(parent)
 	sibling := parentU.left
 	if parentU.left == cur {
 		sibling = parentU.right
 	}
 	if sibling != nil {
-		w := getMapLink[TKey](sibling, c.linkField)
-		if w.red {
+		siblingU := c.getLink(sibling)
+		if siblingU.red {
 			parentU.red = true
-			w.red = false
+			siblingU.red = false
 			if parentU.left == cur {
 				c.rotateLeft(parent)
 			} else {
@@ -617,24 +621,24 @@ func (c *embeddedMap[TKey, T]) removeFixup(cur *T) {
 		}
 	}
 
-	parent = u.parent
-	parentU = getMapLink[TKey](parent, c.linkField)
+	parent = curU.parent
+	parentU = c.getLink(parent)
 	sibling = parentU.left
 	if parentU.left == cur {
 		sibling = parentU.right
 	}
-	siblingU := getMapLink[TKey](sibling, c.linkField)
+	siblingU := c.getLink(sibling)
 	sibLeft := siblingU.left
 	sibRight := siblingU.right
 
 	var sibLeftU *MapLink[TKey, T]
 	if sibLeft != nil {
-		sibLeftU = getMapLink[TKey](sibLeft, c.linkField)
+		sibLeftU = c.getLink(sibLeft)
 	}
 
 	var sibRightU *MapLink[TKey, T]
 	if sibRight != nil {
-		sibRightU = getMapLink[TKey](sibRight, c.linkField)
+		sibRightU = c.getLink(sibRight)
 	}
 
 	if !parentU.red && !siblingU.red && (sibLeftU == nil || !sibLeftU.red) && (sibRightU == nil || !sibRightU.red) {
@@ -659,52 +663,52 @@ func (c *embeddedMap[TKey, T]) removeFixup(cur *T) {
 		c.rotateLeft(sibling)
 	}
 
-	parent = u.parent
-	parentU = getMapLink[TKey](parent, c.linkField)
+	parent = curU.parent
+	parentU = c.getLink(parent)
 	sibling = parentU.left
 	if parentU.left == cur {
 		sibling = parentU.right
 	}
-	siblingU = getMapLink[TKey](sibling, c.linkField)
+	siblingU = c.getLink(sibling)
 	siblingU.red = parentU.red
 	parentU.red = false
 	if cur == parentU.left {
 		sibRight = siblingU.right
-		sibRightU = getMapLink[TKey](sibRight, c.linkField)
+		sibRightU = c.getLink(sibRight)
 		sibRightU.red = false
 		c.rotateLeft(parent)
 		return
 	}
 
 	sibLeft = siblingU.left
-	sibLeftU = getMapLink[TKey](sibLeft, c.linkField)
+	sibLeftU = c.getLink(sibLeft)
 	sibLeftU.red = false
 	c.rotateRight(parent)
 }
 
 func (c *embeddedMap[TKey, T]) cutNode(cur *T) {
-	u := getMapLink[TKey](cur, c.linkField)
-	child := u.left
-	if u.left == nil {
-		child = u.right
+	curU := c.getLink(cur)
+	child := curU.left
+	if curU.left == nil {
+		child = curU.right
 	}
-	parent := u.parent
+	parent := curU.parent
 	if parent == nil {
 		c.root = child
-	} else if parentU := getMapLink[TKey](parent, c.linkField); parentU.left == cur {
+	} else if parentU := c.getLink(parent); parentU.left == cur {
 		parentU.left = child
 	} else {
 		parentU.right = child
 	}
 
 	if child != nil {
-		childU := getMapLink[TKey](child, c.linkField)
+		childU := c.getLink(child)
 		childU.parent = parent
 	}
 
 	walk := parent
 	for walk != nil {
-		walkU := getMapLink[TKey](walk, c.linkField)
+		walkU := c.getLink(walk)
 		walkU.position--
 		walk = walkU.parent
 	}

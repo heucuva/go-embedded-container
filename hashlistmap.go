@@ -67,6 +67,10 @@ type embeddedHashListMap[TKey HashMapKeyType, T any] struct {
 	linkField uintptr
 }
 
+func (c *embeddedHashListMap[TKey, T]) getLink(obj *T) *HashListMapLink[TKey, T] {
+	return getHashListMapLink[TKey](obj, c.linkField)
+}
+
 func (c *embeddedHashListMap[TKey, T]) First() *T {
 	return c.hashList.First()
 }
@@ -121,8 +125,8 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByKey(key TKey) {
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
-		u := getHashListMapLink[TKey](cur, c.linkField)
-		if u.key.value == key {
+		curU := c.getLink(cur)
+		if curU.key.value == key {
 			c.hashList.Remove(cur)
 		}
 		cur = next
@@ -134,8 +138,8 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
-		u := getHashListMapLink[TKey](cur, c.linkField)
-		if u.key.value == key {
+		curU := c.getLink(cur)
+		if curU.key.value == key {
 			c.hashList.Remove(cur)
 			return
 		}
@@ -150,8 +154,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertFirst(key TKey, cur *T) *T {
 		return nil
 	}
 
-	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 	return obj
 }
 
@@ -162,8 +166,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertLast(key TKey, cur *T) *T {
 		return nil
 	}
 
-	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 	return obj
 }
 
@@ -174,8 +178,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertAfter(key TKey, prev, cur *T) *T {
 		return nil
 	}
 
-	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 	return obj
 }
 
@@ -186,16 +190,16 @@ func (c *embeddedHashListMap[TKey, T]) InsertBefore(key TKey, after, cur *T) *T 
 		return nil
 	}
 
-	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) Move(obj *T, newKey TKey) {
 	hashedKey := newHashKey(newKey)
 	c.hashList.Move(obj, hashedKey.hash)
-	u := getHashListMapLink[TKey](obj, c.linkField)
-	u.key = hashedKey
+	objU := c.getLink(obj)
+	objU.key = hashedKey
 }
 
 func (c *embeddedHashListMap[TKey, T]) MoveFirst(cur *T) {

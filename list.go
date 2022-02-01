@@ -45,6 +45,10 @@ type embeddedList[T any] struct {
 	linkField uintptr
 }
 
+func (c *embeddedList[T]) getLink(obj *T) *ListLink[T] {
+	return getListLink(obj, c.linkField)
+}
+
 func (c *embeddedList[T]) First() *T {
 	return c.head
 }
@@ -54,11 +58,11 @@ func (c *embeddedList[T]) Last() *T {
 }
 
 func (c *embeddedList[T]) Next(cur *T) *T {
-	return getListLink(cur, c.linkField).next
+	return c.getLink(cur).next
 }
 
 func (c *embeddedList[T]) Prev(cur *T) *T {
-	return getListLink(cur, c.linkField).prev
+	return c.getLink(cur).prev
 }
 
 func (c *embeddedList[T]) Position(index int) *T {
@@ -75,20 +79,20 @@ func (c *embeddedList[T]) Count() int {
 }
 
 func (c *embeddedList[T]) Remove(obj *T) *T {
-	u := getListLink(obj, c.linkField)
-	if u.prev == nil {
-		c.head = u.next
+	objU := c.getLink(obj)
+	if objU.prev == nil {
+		c.head = objU.next
 	} else {
-		getListLink(u.prev, c.linkField).next = u.next
+		c.getLink(objU.prev).next = objU.next
 	}
-	if u.next == nil {
-		c.tail = u.prev
+	if objU.next == nil {
+		c.tail = objU.prev
 	} else {
-		getListLink(u.next, c.linkField).prev = u.prev
+		c.getLink(objU.next).prev = objU.prev
 	}
 
-	u.next = nil
-	u.prev = nil
+	objU.next = nil
+	objU.prev = nil
 	c.count--
 	return obj
 }
@@ -114,9 +118,9 @@ func (c *embeddedList[T]) RemoveAll() {
 }
 
 func (c *embeddedList[T]) InsertFirst(cur *T) *T {
-	getListLink(cur, c.linkField).next = c.head
+	c.getLink(cur).next = c.head
 	if c.head != nil {
-		getListLink(c.head, c.linkField).prev = cur
+		c.getLink(c.head).prev = cur
 		c.head = cur
 	} else {
 		c.head = cur
@@ -127,9 +131,9 @@ func (c *embeddedList[T]) InsertFirst(cur *T) *T {
 }
 
 func (c *embeddedList[T]) InsertLast(cur *T) *T {
-	getListLink(cur, c.linkField).prev = c.tail
+	c.getLink(cur).prev = c.tail
 	if c.tail != nil {
-		getListLink(c.tail, c.linkField).next = cur
+		c.getLink(c.tail).next = cur
 		c.tail = cur
 	} else {
 		c.head = cur
@@ -143,14 +147,14 @@ func (c *embeddedList[T]) InsertAfter(prev, cur *T) *T {
 	if prev == nil {
 		return c.InsertFirst(cur)
 	}
-	u := getListLink(cur, c.linkField)
-	v := getListLink(prev, c.linkField)
-	u.prev = prev
-	u.next = v.next
-	v.next = cur
+	curU := c.getLink(cur)
+	prevU := c.getLink(prev)
+	curU.prev = prev
+	curU.next = prevU.next
+	prevU.next = cur
 
-	if u.next != nil {
-		getListLink(u.next, c.linkField).prev = cur
+	if curU.next != nil {
+		c.getLink(curU.next).prev = cur
 	} else {
 		c.tail = cur
 	}
@@ -163,14 +167,14 @@ func (c *embeddedList[T]) InsertBefore(after, cur *T) *T {
 	if after == nil {
 		return c.InsertLast(cur)
 	}
-	u := getListLink(cur, c.linkField)
-	v := getListLink(after, c.linkField)
-	u.next = after
-	u.next = v.prev
-	v.prev = cur
+	curU := c.getLink(cur)
+	afterU := c.getLink(after)
+	curU.next = after
+	curU.next = afterU.prev
+	afterU.prev = cur
 
-	if u.prev != nil {
-		getListLink(u.prev, c.linkField).next = cur
+	if curU.prev != nil {
+		c.getLink(curU.prev).next = cur
 	} else {
 		c.head = cur
 	}
@@ -204,6 +208,6 @@ func (c *embeddedList[T]) IsEmpty() bool {
 }
 
 func (c *embeddedList[T]) IsContained(cur *T) bool {
-	u := getListLink(cur, c.linkField)
-	return u.prev != nil || c.head == cur
+	curU := c.getLink(cur)
+	return curU.prev != nil || c.head == cur
 }

@@ -37,7 +37,7 @@ func NewHashDynamic[T any](linkField uintptr) Hash[T] {
 	h := &embeddedHash[T]{
 		linkField: linkField,
 	}
-	h.table = array.NewDynamicArray[*T](minDynamicHashSize, h.onResize)
+	h.table = array.NewDynamicArray(minDynamicHashSize, h.onResize)
 	return h
 }
 
@@ -51,35 +51,39 @@ type embeddedHash[T any] struct {
 	table      array.Array[*T]
 }
 
+func (c *embeddedHash[T]) getLink(obj *T) *HashLink[T] {
+	return getHashLink(obj, c.linkField)
+}
+
 func (c *embeddedHash[T]) Insert(hashValue int, obj *T) *T {
 	if !c.table.IsStatic() {
 		c.Reserve(c.entryCount + 1)
 	}
 	spot := int(uint(hashValue) % uint(c.table.Size()))
-	u := getHashLink(obj, c.linkField)
-	u.hashValue = hashValue
-	u.hashNext = c.table.Slice()[spot]
+	objU := c.getLink(obj)
+	objU.hashValue = hashValue
+	objU.hashNext = c.table.Slice()[spot]
 	c.table.Slice()[spot] = obj
 	c.entryCount++
 	return obj
 }
 
 func (c *embeddedHash[T]) Remove(obj *T) *T {
-	spot := int(uint(getHashLink(obj, c.linkField).hashValue) % uint(c.table.Size()))
+	spot := int(uint(c.getLink(obj).hashValue) % uint(c.table.Size()))
 	cur := c.table.Slice()[spot]
 	prev := &c.table.Slice()[spot]
 
 	for cur != nil {
-		u := getHashLink(cur, c.linkField)
+		objU := c.getLink(cur)
 		if cur == obj {
-			*prev = u.hashNext
-			u.hashNext = nil
-			u.hashValue = 0
+			*prev = objU.hashNext
+			objU.hashNext = nil
+			objU.hashValue = 0
 			c.entryCount--
 			return cur
 		}
-		prev = &u.hashNext
-		cur = u.hashNext
+		prev = &objU.hashNext
+		cur = objU.hashNext
 	}
 	return nil
 }
@@ -98,7 +102,7 @@ func (c *embeddedHash[T]) Reserve(count int) {
 }
 
 func (c *embeddedHash[T]) GetKey(obj *T) int {
-	return getHashLink(obj, c.linkField).hashValue
+	return c.getLink(obj).hashValue
 }
 
 func (c *embeddedHash[T]) Count() int {
@@ -131,26 +135,26 @@ func (c *embeddedHash[T]) FindFirst(hashValue int) *T {
 	spot := int(uint(hashValue) % uint(c.table.Size()))
 	entry := c.table.Slice()[spot]
 	for entry != nil {
-		u := getHashLink(entry, c.linkField)
-		if u.hashValue == hashValue {
+		objU := c.getLink(entry)
+		if objU.hashValue == hashValue {
 			return entry
 		}
-		entry = u.hashNext
+		entry = objU.hashNext
 	}
 	return nil
 }
 
 func (c *embeddedHash[T]) FindNext(prevResult *T) *T {
 	entry := prevResult
-	u := getHashLink(entry, c.linkField)
-	hashValue := u.hashValue
-	entry = u.hashNext
+	encryU := c.getLink(entry)
+	hashValue := encryU.hashValue
+	entry = encryU.hashNext
 	for entry != nil {
-		u = getHashLink(entry, c.linkField)
-		if u.hashValue == hashValue {
+		encryU = c.getLink(entry)
+		if encryU.hashValue == hashValue {
 			return entry
 		}
-		entry = u.hashNext
+		entry = encryU.hashNext
 	}
 	return nil
 }
@@ -170,9 +174,9 @@ func (c *embeddedHash[T]) WalkFirst() *T {
 
 func (c *embeddedHash[T]) WalkNext(prevResult *T) *T {
 	entry := prevResult
-	u := getHashLink(entry, c.linkField)
-	spot := int(uint(u.hashValue) % uint(c.table.Size()))
-	entry = u.hashNext
+	entryU := c.getLink(entry)
+	spot := int(uint(entryU.hashValue) % uint(c.table.Size()))
+	entry = entryU.hashNext
 	if entry != nil {
 		return entry
 	}
@@ -196,8 +200,8 @@ func (c *embeddedHash[T]) RemoveAll() {
 }
 
 func (c *embeddedHash[T]) IsContained(cur *T) bool {
-	u := getHashLink(cur, c.linkField)
-	if u.hashValue != 0 || u.hashNext != nil {
+	curU := c.getLink(cur)
+	if curU.hashValue != 0 || curU.hashNext != nil {
 		return true
 	}
 
@@ -206,7 +210,7 @@ func (c *embeddedHash[T]) IsContained(cur *T) bool {
 		if walk == cur {
 			return true
 		}
-		walk = getHashLink(walk, c.linkField).hashNext
+		walk = c.getLink(walk).hashNext
 	}
 	return false
 }
@@ -224,19 +228,19 @@ func (c *embeddedHash[T]) onResize(dest, src []*T) {
 
 		var tempBucketRoot *T
 		for current != nil {
-			u := getHashLink(current, c.linkField)
-			next := u.hashNext
-			u.hashNext = tempBucketRoot
+			currentU := c.getLink(current)
+			next := currentU.hashNext
+			currentU.hashNext = tempBucketRoot
 			tempBucketRoot = current
 			current = next
 		}
 
 		current = tempBucketRoot
 		for current != nil {
-			u := getHashLink(current, c.linkField)
-			next := u.hashNext
-			spot := int(uint(u.hashValue) % dynamicSize)
-			u.hashNext = dest[spot]
+			currentU := c.getLink(current)
+			next := currentU.hashNext
+			spot := int(uint(currentU.hashValue) % dynamicSize)
+			currentU.hashNext = dest[spot]
 			dest[spot] = current
 			current = next
 		}
