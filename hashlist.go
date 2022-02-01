@@ -186,14 +186,3 @@ func (c *embeddedHashList[T]) IsEmpty() bool {
 func (c *embeddedHashList[T]) IsContained(cur *T) bool {
 	return c.hash.IsContained(cur)
 }
-
-// HashListLink is a link to the map container
-type HashListLink[M any] struct {
-	hash HashLink[M]
-	list ListLink[M]
-}
-
-func getHashListLink[T any](obj *T, linkFieldOfs uintptr) *HashListLink[T] {
-	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
-	return (*HashListLink[T])(u)
-}

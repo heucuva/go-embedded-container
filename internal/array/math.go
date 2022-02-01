@@ -1,4 +1,4 @@
-package embedded
+package array
 
 func nextPowerOf2(v uint) uint {
 	v--

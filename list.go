@@ -1,9 +1,5 @@
 package embedded
 
-import (
-	"unsafe"
-)
-
 // This is a double-linked list container - it allows for linear iteration over
 // its contents.
 // This cointainer does not take ownership of its contents, so the application
@@ -210,15 +206,4 @@ func (c *embeddedList[T]) IsEmpty() bool {
 func (c *embeddedList[T]) IsContained(cur *T) bool {
 	u := getListLink(cur, c.linkField)
 	return u.prev != nil || c.head == cur
-}
-
-// ListLink is a link to the list container
-type ListLink[M any] struct {
-	prev *M
-	next *M
-}
-
-func getListLink[T any](obj *T, linkFieldOfs uintptr) *ListLink[T] {
-	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
-	return (*ListLink[T])(u)
 }
