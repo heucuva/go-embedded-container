@@ -25,7 +25,7 @@ type PriorityQueue[P PriorityType, T any] interface {
 }
 
 type PriorityType interface {
-	constraints.Integer | constraints.Float
+	constraints.Ordered
 }
 
 func NewPriorityQueue[P PriorityType, T any](linkField uintptr) PriorityQueue[P, T] {
@@ -124,7 +124,7 @@ func (c *embeddedPriorityQueue[P, T]) IsContained(entry *T) bool {
 
 func (c *embeddedPriorityQueue[P, T]) GetPriority(entry *T) *P {
 	entryU := c.getLink(entry)
-	spot := int(entryU.priority) - 1
+	spot := int(entryU.position) - 1
 	if spot >= 0 {
 		return &entryU.priority
 	}
