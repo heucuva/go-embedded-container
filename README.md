@@ -14,3 +14,4 @@ Various containers supporting Go Generics that don't own their entities. Instead
 | `embedded.HashMap` | A container combining the mechanisms of `embedded.Hash` and `embedded.Map` without incurring the performance concerns of `embedded.Map` |
 | `embedded.List` | A list-style container with a doubly-linked interface |
 | `embedded.Map` | A map-style container with red-black tree internally |
+| `embedded.PriorityQueue` | A priority queue-style container with heap sorting internally |
