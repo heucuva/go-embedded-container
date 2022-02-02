@@ -37,7 +37,7 @@ type HashListMap[TKey HashMapKeyType, T any] interface {
 
 	FindFirst(key TKey) *T
 	FindNext(prevResult *T) *T
-	GetKey(obj *T) int
+	GetKey(obj *T) TKey
 	GetTableSize() int
 	GetTableUsed() int
 	Reserve(count int)
@@ -96,24 +96,15 @@ func (c *embeddedHashListMap[TKey, T]) Count() int {
 }
 
 func (c *embeddedHashListMap[TKey, T]) Remove(obj *T) *T {
-	c.hashList.Remove(obj)
 	return c.hashList.Remove(obj)
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveFirst() *T {
-	obj := c.hashList.RemoveFirst()
-	if obj != nil {
-		c.hashList.Remove(obj)
-	}
-	return obj
+	return c.hashList.RemoveFirst()
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveLast() *T {
-	obj := c.hashList.RemoveLast()
-	if obj != nil {
-		c.hashList.Remove(obj)
-	}
-	return obj
+	return c.hashList.RemoveLast()
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveAll() {
@@ -227,8 +218,8 @@ func (c *embeddedHashListMap[TKey, T]) FindNext(prevResult *T) *T {
 	return c.hashList.FindNext(prevResult)
 }
 
-func (c *embeddedHashListMap[TKey, T]) GetKey(obj *T) int {
-	return c.hashList.GetKey(obj)
+func (c *embeddedHashListMap[TKey, T]) GetKey(obj *T) TKey {
+	return c.getLink(obj).key.value
 }
 
 func (c *embeddedHashListMap[TKey, T]) GetTableSize() int {

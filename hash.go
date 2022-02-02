@@ -9,16 +9,16 @@ import (
 // must remove items manually.
 
 type Hash[T any] interface {
-	Insert(hashValue int, obj *T) *T
+	Insert(hashValue HashedKeyValue, obj *T) *T
 	Remove(obj *T) *T
-	Move(obj *T, newHashValue int)
+	Move(obj *T, newHashValue HashedKeyValue)
 	Reserve(count int)
-	GetKey(obj *T) int
+	GetKey(obj *T) HashedKeyValue
 	Count() int
 	GetTableSize() int
 	GetTableUsed() int
 	IsEmpty() bool
-	FindFirst(hashValue int) *T
+	FindFirst(hashValue HashedKeyValue) *T
 	FindNext(prevResult *T) *T
 	WalkFirst() *T
 	WalkNext(prevResult *T) *T
@@ -55,11 +55,19 @@ func (c *embeddedHash[T]) getLink(obj *T) *HashLink[T] {
 	return getHashLink(obj, c.linkField)
 }
 
-func (c *embeddedHash[T]) Insert(hashValue int, obj *T) *T {
+func (c *embeddedHash[T]) calcSpot(hashValue HashedKeyValue) int {
+	return c.calcSpotForSize(hashValue, c.table.Size())
+}
+
+func (c *embeddedHash[T]) calcSpotForSize(hashValue HashedKeyValue, tableSize int) int {
+	return int(hashValue % HashedKeyValue(tableSize))
+}
+
+func (c *embeddedHash[T]) Insert(hashValue HashedKeyValue, obj *T) *T {
 	if !c.table.IsStatic() {
 		c.Reserve(c.entryCount + 1)
 	}
-	spot := int(uint(hashValue) % uint(c.table.Size()))
+	spot := c.calcSpot(hashValue)
 	objU := c.getLink(obj)
 	objU.hashValue = hashValue
 	objU.hashNext = c.table.Slice()[spot]
@@ -69,7 +77,7 @@ func (c *embeddedHash[T]) Insert(hashValue int, obj *T) *T {
 }
 
 func (c *embeddedHash[T]) Remove(obj *T) *T {
-	spot := int(uint(c.getLink(obj).hashValue) % uint(c.table.Size()))
+	spot := c.calcSpot(c.getLink(obj).hashValue)
 	cur := c.table.Slice()[spot]
 	prev := &c.table.Slice()[spot]
 
@@ -88,7 +96,7 @@ func (c *embeddedHash[T]) Remove(obj *T) *T {
 	return nil
 }
 
-func (c *embeddedHash[T]) Move(obj *T, newHashValue int) {
+func (c *embeddedHash[T]) Move(obj *T, newHashValue HashedKeyValue) {
 	c.Remove(obj)
 	c.Insert(newHashValue, obj)
 }
@@ -101,7 +109,7 @@ func (c *embeddedHash[T]) Reserve(count int) {
 	}
 }
 
-func (c *embeddedHash[T]) GetKey(obj *T) int {
+func (c *embeddedHash[T]) GetKey(obj *T) HashedKeyValue {
 	return c.getLink(obj).hashValue
 }
 
@@ -131,8 +139,8 @@ func (c *embeddedHash[T]) IsEmpty() bool {
 	return c.entryCount == 0
 }
 
-func (c *embeddedHash[T]) FindFirst(hashValue int) *T {
-	spot := int(uint(hashValue) % uint(c.table.Size()))
+func (c *embeddedHash[T]) FindFirst(hashValue HashedKeyValue) *T {
+	spot := c.calcSpot(hashValue)
 	entry := c.table.Slice()[spot]
 	for entry != nil {
 		objU := c.getLink(entry)
@@ -175,7 +183,7 @@ func (c *embeddedHash[T]) WalkFirst() *T {
 func (c *embeddedHash[T]) WalkNext(prevResult *T) *T {
 	entry := prevResult
 	entryU := c.getLink(entry)
-	spot := int(uint(entryU.hashValue) % uint(c.table.Size()))
+	spot := c.calcSpot(entryU.hashValue)
 	entry = entryU.hashNext
 	if entry != nil {
 		return entry
@@ -220,7 +228,7 @@ func (c *embeddedHash[T]) onResize(dest, src []*T) {
 		return
 	}
 
-	dynamicSize := uint(len(dest))
+	dynamicSize := len(dest)
 	for _, current := range src {
 		if current == nil {
 			continue
@@ -239,7 +247,7 @@ func (c *embeddedHash[T]) onResize(dest, src []*T) {
 		for current != nil {
 			currentU := c.getLink(current)
 			next := currentU.hashNext
-			spot := int(uint(currentU.hashValue) % dynamicSize)
+			spot := c.calcSpotForSize(currentU.hashValue, dynamicSize)
 			currentU.hashNext = dest[spot]
 			dest[spot] = current
 			current = next

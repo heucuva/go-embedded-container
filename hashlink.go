@@ -7,7 +7,7 @@ import (
 // HashLink is a link to the map container
 type HashLink[M any] struct {
 	hashNext  *M
-	hashValue int
+	hashValue HashedKeyValue
 }
 
 func getHashLink[T any](obj *T, linkFieldOfs uintptr) *HashLink[T] {

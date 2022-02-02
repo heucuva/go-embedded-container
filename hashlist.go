@@ -22,20 +22,20 @@ type HashList[T any] interface {
 	RemoveLast() *T
 	RemoveAll()
 
-	InsertFirst(hashValue int, cur *T) *T
-	InsertLast(hashValue int, cur *T) *T
-	InsertAfter(hashValue int, prev, cur *T) *T
-	InsertBefore(hashValue int, after, cur *T) *T
+	InsertFirst(hashValue HashedKeyValue, cur *T) *T
+	InsertLast(hashValue HashedKeyValue, cur *T) *T
+	InsertAfter(hashValue HashedKeyValue, prev, cur *T) *T
+	InsertBefore(hashValue HashedKeyValue, after, cur *T) *T
 
-	Move(obj *T, newHashValue int)
+	Move(obj *T, newHashValue HashedKeyValue)
 	MoveFirst(cur *T)
 	MoveLast(cur *T)
 	MoveAfter(dest, cur *T)
 	MoveBefore(dest, cur *T)
 
-	FindFirst(hashValue int) *T
+	FindFirst(hashValue HashedKeyValue) *T
 	FindNext(prevResult *T) *T
-	GetKey(obj *T) int
+	GetKey(obj *T) HashedKeyValue
 	GetTableSize() int
 	GetTableUsed() int
 	Reserve(count int)
@@ -115,27 +115,27 @@ func (c *embeddedHashList[T]) RemoveAll() {
 	c.hash.RemoveAll()
 }
 
-func (c *embeddedHashList[T]) InsertFirst(hashValue int, cur *T) *T {
+func (c *embeddedHashList[T]) InsertFirst(hashValue HashedKeyValue, cur *T) *T {
 	c.list.InsertFirst(cur)
 	return c.hash.Insert(hashValue, cur)
 }
 
-func (c *embeddedHashList[T]) InsertLast(hashValue int, cur *T) *T {
+func (c *embeddedHashList[T]) InsertLast(hashValue HashedKeyValue, cur *T) *T {
 	c.list.InsertLast(cur)
 	return c.hash.Insert(hashValue, cur)
 }
 
-func (c *embeddedHashList[T]) InsertAfter(hashValue int, prev, cur *T) *T {
+func (c *embeddedHashList[T]) InsertAfter(hashValue HashedKeyValue, prev, cur *T) *T {
 	c.list.InsertAfter(prev, cur)
 	return c.hash.Insert(hashValue, cur)
 }
 
-func (c *embeddedHashList[T]) InsertBefore(hashValue int, after, cur *T) *T {
+func (c *embeddedHashList[T]) InsertBefore(hashValue HashedKeyValue, after, cur *T) *T {
 	c.list.InsertBefore(after, cur)
 	return c.hash.Insert(hashValue, cur)
 }
 
-func (c *embeddedHashList[T]) Move(obj *T, newHashValue int) {
+func (c *embeddedHashList[T]) Move(obj *T, newHashValue HashedKeyValue) {
 	c.hash.Move(obj, newHashValue)
 }
 
@@ -155,7 +155,7 @@ func (c *embeddedHashList[T]) MoveBefore(dest, cur *T) {
 	c.list.MoveBefore(dest, cur)
 }
 
-func (c *embeddedHashList[T]) FindFirst(hashValue int) *T {
+func (c *embeddedHashList[T]) FindFirst(hashValue HashedKeyValue) *T {
 	return c.hash.FindFirst(hashValue)
 }
 
@@ -163,7 +163,7 @@ func (c *embeddedHashList[T]) FindNext(prevResult *T) *T {
 	return c.hash.FindNext(prevResult)
 }
 
-func (c *embeddedHashList[T]) GetKey(obj *T) int {
+func (c *embeddedHashList[T]) GetKey(obj *T) HashedKeyValue {
 	return c.hash.GetKey(obj)
 }
 

@@ -172,5 +172,5 @@ func (c *embeddedHashMap[TKey, T]) WalkNext(prevResult *T) *T {
 }
 
 func (c *embeddedHashMap[TKey, T]) IsContained(obj *T) bool {
-	return c.IsContained(obj)
+	return c.hash.IsContained(obj)
 }

@@ -10,16 +10,22 @@ type HashMapKeyType interface {
 	constraints.Ordered
 }
 
+type HashedKeyValue uint64
+
 type hashKey[TKey HashMapKeyType] struct {
 	value TKey
-	hash  int
+	hash  HashedKeyValue
 }
 
 func newHashKey[TKey HashMapKeyType](key TKey) hashKey[TKey] {
-	h := fnv.New64()
-	_, _ = h.Write([]byte(fmt.Sprint(key)))
 	return hashKey[TKey]{
 		value: key,
-		hash:  int(h.Sum64()),
+		hash:  HashKey(key),
 	}
+}
+
+func HashKey[TKey HashMapKeyType](key TKey) HashedKeyValue {
+	h := fnv.New64()
+	_, _ = h.Write([]byte(fmt.Sprint(key)))
+	return HashedKeyValue(h.Sum64())
 }
