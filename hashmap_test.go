@@ -111,7 +111,7 @@ func testEmbeddedHashMap(t *testing.T, c embedded.HashMap[int, hashMapEntry], te
 		}
 
 		if actualKey := c.GetKey(entry); actualKey != i {
-			t.Fatalf("hashed key mismatch detected (actual %d != expected %d", actualKey, i)
+			t.Fatalf("hashed key mismatch detected (actual %d != expected %d)", actualKey, i)
 		}
 
 		if i == removeTarget {
@@ -136,7 +136,7 @@ func testEmbeddedHashMap(t *testing.T, c embedded.HashMap[int, hashMapEntry], te
 		c.Move(moveItem, newKey)
 		currentKey := c.GetKey(moveItem)
 		if currentKey != newKey {
-			t.Fatalf("moved item did not move to expected key hash (old %d -> actual %d != expected %d", oldKey, currentKey, newKey)
+			t.Fatalf("moved item did not move to expected key hash (old %d -> actual %d != expected %d)", oldKey, currentKey, newKey)
 		}
 	} else {
 		t.Fatal("could not find any item in embedded hash")

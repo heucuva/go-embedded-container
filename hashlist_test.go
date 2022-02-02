@@ -175,13 +175,13 @@ func testEmbeddedHashList(t *testing.T, c embedded.HashList[hashListEntry], test
 	if actualFirst := c.RemoveFirst(); actualFirst == nil {
 		t.Fatal("no item at front of embedded hash list")
 	} else if expectedFirst := removeTarget; actualFirst.data != expectedFirst {
-		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d", actualFirst.data, expectedFirst)
+		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d)", actualFirst.data, expectedFirst)
 	}
 
 	if actualLast := c.RemoveLast(); actualLast == nil {
 		t.Fatal("no item at front of embedded hash list")
 	} else if expectedLast := testSize - 1; actualLast.data != expectedLast {
-		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d", actualLast.data, expectedLast)
+		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d)", actualLast.data, expectedLast)
 	}
 
 	c.RemoveAll()
