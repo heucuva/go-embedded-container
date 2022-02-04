@@ -170,7 +170,7 @@ func (c *embeddedList[T]) InsertBefore(after, cur *T) *T {
 	curU := c.getLink(cur)
 	afterU := c.getLink(after)
 	curU.next = after
-	curU.next = afterU.prev
+	curU.prev = afterU.prev
 	afterU.prev = cur
 
 	if curU.prev != nil {
