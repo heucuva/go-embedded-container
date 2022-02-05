@@ -119,24 +119,24 @@ func testEmbeddedHashListMap(t *testing.T, c embedded.HashListMap[int, hashListM
 				t.Fatalf("item not found at expected position")
 			}
 			if !c.IsContained(entry) {
-				t.Fatal("embedded hash reports that contained item is not present")
+				t.Fatal("embedded hash list map reports that contained item is not present")
 			}
 			removedEntry = c.Remove(entry)
 			if c.IsContained(entry) {
-				t.Fatal("embedded hash reports that removed item is present")
+				t.Fatal("embedded hash list map reports that removed item is present")
 			}
 		}
 	}
 
 	for walk := c.First(); walk != nil; walk = c.Next(walk) {
 		if walk.data == removeTarget {
-			t.Fatal("removed item still present in embedded hash")
+			t.Fatal("removed item still present in embedded hash list map")
 		}
 	}
 
 	for walk := c.Last(); walk != nil; walk = c.Prev(walk) {
 		if walk.data == removeTarget {
-			t.Fatal("removed item still present in embedded hash")
+			t.Fatal("removed item still present in embedded hash list map")
 		}
 	}
 
@@ -154,7 +154,7 @@ func testEmbeddedHashListMap(t *testing.T, c embedded.HashListMap[int, hashListM
 			t.Fatalf("moved item did not move to expected key hash (old %d -> actual %d != expected %d)", oldKey, currentKey, newKey)
 		}
 	} else {
-		t.Fatal("could not find any item in embedded hash")
+		t.Fatal("could not find any item in embedded hash list map")
 	}
 
 	if actualCount := c.Count(); actualCount != expectedCount {
@@ -162,17 +162,33 @@ func testEmbeddedHashListMap(t *testing.T, c embedded.HashListMap[int, hashListM
 	}
 
 	c.InsertFirst(removeTarget, removedEntry)
+	c.MoveLast(removedEntry)
+	c.MoveAfter(c.First(), removedEntry)
+	c.MoveBefore(c.Last(), removedEntry)
+	c.MoveFirst(removedEntry)
 
 	if actualFirst := c.RemoveFirst(); actualFirst == nil {
-		t.Fatal("no item at front of embedded hash list")
+		t.Fatal("no item at front of embedded hash list map")
 	} else if expectedFirst := removeTarget; actualFirst.data != expectedFirst {
-		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d)", actualFirst.data, expectedFirst)
+		t.Fatalf("mismatched item at front of embedded hash list map (actual %d != expected %d)", actualFirst.data, expectedFirst)
 	}
 
 	if actualLast := c.RemoveLast(); actualLast == nil {
 		t.Fatal("no item at front of embedded hash list")
 	} else if expectedLast := testSize - 1; actualLast.data != expectedLast {
-		t.Fatalf("mismatched item at front of embedded hash list (actual %d != expected %d)", actualLast.data, expectedLast)
+		t.Fatalf("mismatched item at front of embedded hash list map (actual %d != expected %d)", actualLast.data, expectedLast)
+	}
+
+	oldCount := c.Count()
+	c.RemoveAllByKey(1)
+	if newCount := c.Count(); oldCount <= newCount {
+		t.Fatal("could not remove item from embedded hash list map")
+	}
+
+	oldCount = c.Count()
+	c.RemoveAllByUniqueKey(2)
+	if newCount := c.Count(); oldCount <= newCount {
+		t.Fatal("could not remove item from embedded hash list map")
 	}
 
 	c.RemoveAll()
