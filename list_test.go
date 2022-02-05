@@ -110,7 +110,10 @@ func testEmbeddedList(t *testing.T, c embedded.List[listEntry], testSize int, re
 		t.Fatalf("count changed unexpectedly (actual %d != expected %d)", actualCount, expectedCount)
 	}
 
-	c.InsertFirst(removedEntry)
+	c.MoveLast(removedEntry)
+	c.MoveAfter(c.First(), removedEntry)
+	c.MoveBefore(c.Last(), removedEntry)
+	c.MoveFirst(removedEntry)
 
 	if actualLast := c.RemoveLast(); actualLast == nil {
 		t.Fatal("no item at end of embedded list")
