@@ -79,21 +79,9 @@ func (c *embeddedList[T]) Count() int {
 }
 
 func (c *embeddedList[T]) Remove(obj *T) *T {
-	objU := c.getLink(obj)
-	if objU.prev == nil {
-		c.head = objU.next
-	} else {
-		c.getLink(objU.prev).next = objU.next
+	if c.getLink(obj).Remove(c.linkField, &c.head, &c.tail) {
+		c.count--
 	}
-	if objU.next == nil {
-		c.tail = objU.prev
-	} else {
-		c.getLink(objU.next).prev = objU.prev
-	}
-
-	objU.next = nil
-	objU.prev = nil
-	c.count--
 	return obj
 }
 
@@ -208,6 +196,5 @@ func (c *embeddedList[T]) IsEmpty() bool {
 }
 
 func (c *embeddedList[T]) IsContained(cur *T) bool {
-	curU := c.getLink(cur)
-	return curU.prev != nil || c.head == cur
+	return c.getLink(cur).IsContained(c.linkField, c.head)
 }
