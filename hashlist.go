@@ -10,38 +10,8 @@ import (
 // must remove items manually.
 
 type HashList[T any] interface {
-	First() *T
-	Last() *T
-	Next(cur *T) *T
-	Prev(cur *T) *T
-	Position(index int) *T
-	Count() int
-
-	Remove(obj *T) *T
-	RemoveFirst() *T
-	RemoveLast() *T
-	RemoveAll()
-
-	InsertFirst(hashValue HashedKeyValue, cur *T) *T
-	InsertLast(hashValue HashedKeyValue, cur *T) *T
-	InsertAfter(hashValue HashedKeyValue, prev, cur *T) *T
-	InsertBefore(hashValue HashedKeyValue, after, cur *T) *T
-
-	Move(obj *T, newHashValue HashedKeyValue)
-	MoveFirst(cur *T)
-	MoveLast(cur *T)
-	MoveAfter(dest, cur *T)
-	MoveBefore(dest, cur *T)
-
-	FindFirst(hashValue HashedKeyValue) *T
-	FindNext(prevResult *T) *T
-	GetKey(obj *T) HashedKeyValue
-	GetTableSize() int
-	GetTableUsed() int
-	Reserve(count int)
-	IsEmpty() bool
-
-	IsContained(cur *T) bool
+	TableInterface
+	ListInterface[HashedKeyValue, T]
 }
 
 func NewHashListStatic[T any](linkField uintptr, tableSize int) HashList[T] {

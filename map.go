@@ -5,6 +5,29 @@ import (
 )
 
 type Map[TKey MapKeyType, T any] interface {
+	First() *T
+	Last() *T
+	Next(cur *T) *T
+	Prev(cur *T) *T
+	Position(index int) *T
+	Count() int
+
+	Remove(obj *T) *T
+	RemoveFirst() *T
+	RemoveLast() *T
+	RemoveAll()
+
+	Insert(key TKey, obj *T) *T
+
+	Move(obj *T, newKey TKey)
+
+	GetKey(obj *T) TKey
+	IsEmpty() bool
+
+	IsContained(obj *T) bool
+
+	GetPosition(obj *T) int
+
 	Find(key TKey) *T
 	FindFirst(key TKey) *T
 	FindNext(cur *T) *T
@@ -12,26 +35,6 @@ type Map[TKey MapKeyType, T any] interface {
 	FindUpperInclusive(key TKey) *T
 	FindLowerExclusive(key TKey) *T
 	FindUpperExclusive(key TKey) *T
-
-	First() *T
-	Last() *T
-	Next(cur *T) *T
-	Prev(cur *T) *T
-	GetPosition(obj *T) int
-	Position(index int) *T
-
-	Insert(key TKey, obj *T) *T
-	Remove(obj *T) *T
-	RemoveFirst() *T
-	RemoveLast() *T
-	Move(cur *T, newKey TKey)
-
-	GetKey(obj *T) TKey
-	Count() int
-	IsEmpty() bool
-
-	RemoveAll()
-	IsContained(obj *T) bool
 }
 
 type MapKeyType interface {

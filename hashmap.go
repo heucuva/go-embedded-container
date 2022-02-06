@@ -4,29 +4,30 @@ import (
 	"unsafe"
 )
 
-// This is a double-linked list container - it allows for linear iteration over
-// its contents.
+// This is a hash map container - it allows for fast lookups of its contents.
 // This cointainer does not take ownership of its contents, so the application
 // must remove items manually.
 
 type HashMap[TKey HashMapKeyType, T any] interface {
-	Insert(key TKey, obj *T) *T
+	TableInterface
+
 	Remove(obj *T) *T
+
+	Insert(key TKey, obj *T) *T
+
 	Move(obj *T, newKey TKey)
-	RemoveAll()
-	RemoveAllByKey(key TKey)
-	RemoveAllByUniqueKey(key TKey)
-	Reserve(count int)
-	GetKey(obj *T) TKey
-	Count() int
-	GetTableSize() int
-	GetTableUsed() int
-	IsEmpty() bool
+
 	FindFirst(key TKey) *T
 	FindNext(prevResult *T) *T
+	GetKey(obj *T) TKey
+
+	IsContained(obj *T) bool
+
+	RemoveAllByKey(key TKey)
+	RemoveAllByUniqueKey(key TKey)
+
 	WalkFirst() *T
 	WalkNext(prevResult *T) *T
-	IsContained(obj *T) bool
 }
 
 func NewHashMapStatic[TKey HashMapKeyType, T any](linkField uintptr, tableSize int) HashMap[TKey, T] {

@@ -10,40 +10,11 @@ import (
 // must remove items manually.
 
 type HashListMap[TKey HashMapKeyType, T any] interface {
-	First() *T
-	Last() *T
-	Next(cur *T) *T
-	Prev(cur *T) *T
-	Position(index int) *T
-	Count() int
+	TableInterface
+	ListInterface[TKey, T]
 
-	Remove(obj *T) *T
-	RemoveFirst() *T
-	RemoveLast() *T
-	RemoveAll()
 	RemoveAllByKey(key TKey)
 	RemoveAllByUniqueKey(key TKey)
-
-	InsertFirst(key TKey, cur *T) *T
-	InsertLast(key TKey, cur *T) *T
-	InsertAfter(key TKey, prev, cur *T) *T
-	InsertBefore(key TKey, after, cur *T) *T
-
-	Move(obj *T, newKey TKey)
-	MoveFirst(cur *T)
-	MoveLast(cur *T)
-	MoveAfter(dest, cur *T)
-	MoveBefore(dest, cur *T)
-
-	FindFirst(key TKey) *T
-	FindNext(prevResult *T) *T
-	GetKey(obj *T) TKey
-	GetTableSize() int
-	GetTableUsed() int
-	Reserve(count int)
-	IsEmpty() bool
-
-	IsContained(cur *T) bool
 }
 
 func NewHashListMapStatic[TKey HashMapKeyType, T any](linkField uintptr, tableSize int) HashListMap[TKey, T] {

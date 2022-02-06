@@ -9,21 +9,22 @@ import (
 // must remove items manually.
 
 type Hash[T any] interface {
-	Insert(hashValue HashedKeyValue, obj *T) *T
+	TableInterface
+
 	Remove(obj *T) *T
+
+	Insert(hashValue HashedKeyValue, obj *T) *T
+
 	Move(obj *T, newHashValue HashedKeyValue)
-	Reserve(count int)
-	GetKey(obj *T) HashedKeyValue
-	Count() int
-	GetTableSize() int
-	GetTableUsed() int
-	IsEmpty() bool
+
 	FindFirst(hashValue HashedKeyValue) *T
 	FindNext(prevResult *T) *T
+	GetKey(obj *T) HashedKeyValue
+
+	IsContained(obj *T) bool
+
 	WalkFirst() *T
 	WalkNext(prevResult *T) *T
-	RemoveAll()
-	IsContained(cur *T) bool
 }
 
 func NewHashStatic[T any](linkField uintptr, tableSize int) Hash[T] {
