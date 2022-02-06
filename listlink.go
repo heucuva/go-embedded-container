@@ -10,8 +10,8 @@ type ListLink[M any] struct {
 	next *M
 }
 
-func (l *ListLink[M]) Remove(linkFieldOfs uintptr, head **M, tail **M) bool {
-	if !l.IsContained(linkFieldOfs, *head) {
+func (l *ListLink[M]) remove(linkFieldOfs uintptr, head **M, tail **M) bool {
+	if !l.isContained(linkFieldOfs, *head) {
 		return false
 	}
 	if l.prev == nil {
@@ -30,7 +30,7 @@ func (l *ListLink[M]) Remove(linkFieldOfs uintptr, head **M, tail **M) bool {
 	return true
 }
 
-func (l *ListLink[M]) IsContained(linkFieldOfs uintptr, head *M) bool {
+func (l *ListLink[M]) isContained(linkFieldOfs uintptr, head *M) bool {
 	return l.prev != nil || head == l.getItem(linkFieldOfs)
 }
 

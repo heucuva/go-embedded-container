@@ -79,7 +79,7 @@ func (c *embeddedList[T]) Count() int {
 }
 
 func (c *embeddedList[T]) Remove(obj *T) *T {
-	if c.getLink(obj).Remove(c.linkField, &c.head, &c.tail) {
+	if c.getLink(obj).remove(c.linkField, &c.head, &c.tail) {
 		c.count--
 	}
 	return obj
@@ -196,5 +196,5 @@ func (c *embeddedList[T]) IsEmpty() bool {
 }
 
 func (c *embeddedList[T]) IsContained(cur *T) bool {
-	return c.getLink(cur).IsContained(c.linkField, c.head)
+	return c.getLink(cur).isContained(c.linkField, c.head)
 }
