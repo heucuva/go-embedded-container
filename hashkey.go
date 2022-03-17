@@ -1,9 +1,10 @@
 package embedded
 
 import (
-	"constraints"
 	"fmt"
 	"hash/fnv"
+
+	"golang.org/x/exp/constraints"
 )
 
 type HashMapKeyType interface {

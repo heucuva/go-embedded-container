@@ -1,7 +1,7 @@
 package embedded
 
 import (
-	"constraints"
+	"golang.org/x/exp/constraints"
 )
 
 // This is a priority queue container - it allows for prioritization of its

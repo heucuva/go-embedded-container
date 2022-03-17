@@ -1,7 +1,7 @@
 package embedded
 
 import (
-	"constraints"
+	"golang.org/x/exp/constraints"
 )
 
 type Map[TKey MapKeyType, T any] interface {
