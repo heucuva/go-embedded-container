@@ -135,14 +135,14 @@ func (c *embeddedList[T]) InsertAfter(prev, cur *T) *T {
 	if prev == nil {
 		return c.InsertFirst(cur)
 	}
-	curU := c.getLink(cur)
-	prevU := c.getLink(prev)
-	curU.prev = prev
-	curU.next = prevU.next
-	prevU.next = cur
+	curLink := c.getLink(cur)
+	prevLink := c.getLink(prev)
+	curLink.prev = prev
+	curLink.next = prevLink.next
+	prevLink.next = cur
 
-	if curU.next != nil {
-		c.getLink(curU.next).prev = cur
+	if curLink.next != nil {
+		c.getLink(curLink.next).prev = cur
 	} else {
 		c.tail = cur
 	}
@@ -155,14 +155,14 @@ func (c *embeddedList[T]) InsertBefore(after, cur *T) *T {
 	if after == nil {
 		return c.InsertLast(cur)
 	}
-	curU := c.getLink(cur)
-	afterU := c.getLink(after)
-	curU.next = after
-	curU.prev = afterU.prev
-	afterU.prev = cur
+	curLink := c.getLink(cur)
+	afterLink := c.getLink(after)
+	curLink.next = after
+	curLink.prev = afterLink.prev
+	afterLink.prev = cur
 
-	if curU.prev != nil {
-		c.getLink(curU.prev).next = cur
+	if curLink.prev != nil {
+		c.getLink(curLink.prev).next = cur
 	} else {
 		c.head = cur
 	}

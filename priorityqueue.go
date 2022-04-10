@@ -55,8 +55,8 @@ func (c *embeddedPriorityQueue[P, T]) TopWithPriority(priority P) *T {
 		return nil
 	}
 	top := c.array[0]
-	topU := c.getLink(top)
-	if !(priority < topU.priority) {
+	topLink := c.getLink(top)
+	if !(priority < topLink.priority) {
 		return top
 	}
 	return nil
@@ -67,8 +67,8 @@ func (c *embeddedPriorityQueue[P, T]) Remove(entry *T) *T {
 		return entry
 	}
 
-	entryU := c.getLink(entry)
-	spot := int(entryU.position) - 1
+	entryLink := c.getLink(entry)
+	spot := int(entryLink.position) - 1
 	if spot == -1 {
 		return entry
 	}
@@ -81,7 +81,7 @@ func (c *embeddedPriorityQueue[P, T]) Remove(entry *T) *T {
 		v.position = spot + 1
 		c.refloat(endEntry)
 	}
-	entryU.position = 0
+	entryLink.position = 0
 	return entry
 }
 
@@ -95,8 +95,8 @@ func (c *embeddedPriorityQueue[P, T]) RemoveTopWithPriority(priority P) *T {
 		return nil
 	}
 
-	topU := c.getLink(top)
-	if !(priority < topU.priority) {
+	topLink := c.getLink(top)
+	if !(priority < topLink.priority) {
 		return c.Remove(top)
 	}
 
@@ -123,34 +123,34 @@ func (c *embeddedPriorityQueue[P, T]) IsContained(entry *T) bool {
 }
 
 func (c *embeddedPriorityQueue[P, T]) GetPriority(entry *T) *P {
-	entryU := c.getLink(entry)
-	spot := int(entryU.position) - 1
+	entryLink := c.getLink(entry)
+	spot := int(entryLink.position) - 1
 	if spot >= 0 {
-		return &entryU.priority
+		return &entryLink.priority
 	}
 	return nil
 }
 
 func (c *embeddedPriorityQueue[P, T]) Insert(priority P, entry *T) *T {
-	entryU := c.getLink(entry)
-	spot := int(entryU.position) - 1
+	entryLink := c.getLink(entry)
+	spot := int(entryLink.position) - 1
 	if spot == -1 {
-		entryU.priority = priority
-		entryU.position = len(c.array) + 1
+		entryLink.priority = priority
+		entryLink.position = len(c.array) + 1
 		c.array = append(c.array, entry)
 	} else {
-		if !(entryU.priority < priority || priority < entryU.priority) {
+		if !(entryLink.priority < priority || priority < entryLink.priority) {
 			return entry
 		}
-		entryU.priority = priority
+		entryLink.priority = priority
 	}
 	c.refloat(entry)
 	return entry
 }
 
 func (c *embeddedPriorityQueue[P, T]) refloat(entry *T) {
-	entryU := c.getLink(entry)
-	spot := int(entryU.position) - 1
+	entryLink := c.getLink(entry)
+	spot := int(entryLink.position) - 1
 	tryDown := true
 	for spot > 0 {
 		hold := c.array[spot]
@@ -177,29 +177,29 @@ func (c *embeddedPriorityQueue[P, T]) refloat(entry *T) {
 				break
 			}
 
-			curU := c.getLink(c.array[spot])
-			downSpot1U := c.getLink(c.array[downSpot1])
+			curLink := c.getLink(c.array[spot])
+			downSpot1Link := c.getLink(c.array[downSpot1])
 
 			downSpot2 := (spot * 2) + 2
-			var downSpot2U *PriorityQueueLink[P]
+			var downSpot2Link *PriorityQueueLink[P]
 			if downSpot2 < len(c.array) {
-				downSpot2U = c.getLink(c.array[downSpot2])
+				downSpot2Link = c.getLink(c.array[downSpot2])
 			}
-			if downSpot2U == nil || downSpot1U.priority < downSpot2U.priority {
-				if !(downSpot1U.priority < curU.priority) {
+			if downSpot2Link == nil || downSpot1Link.priority < downSpot2Link.priority {
+				if !(downSpot1Link.priority < curLink.priority) {
 					break
 				}
 
 				c.array[spot], c.array[downSpot1] = c.array[downSpot1], c.array[spot]
-				curU.position, downSpot1U.position = downSpot1+1, spot+1
+				curLink.position, downSpot1Link.position = downSpot1+1, spot+1
 				spot = downSpot1
 			} else {
-				if !(downSpot2U.priority < curU.priority) {
+				if !(downSpot2Link.priority < curLink.priority) {
 					break
 				}
 
 				c.array[spot], c.array[downSpot2] = c.array[downSpot2], c.array[spot]
-				curU.position, downSpot2U.position = downSpot2+1, spot+1
+				curLink.position, downSpot2Link.position = downSpot2+1, spot+1
 				spot = downSpot2
 			}
 		}

@@ -61,8 +61,8 @@ func (c *embeddedHashMap[TKey, T]) Insert(key TKey, obj *T) *T {
 	if o == nil {
 		return nil
 	}
-	oU := c.getLink(o)
-	oU.key = hashedKey
+	oLink := c.getLink(o)
+	oLink.key = hashedKey
 	return o
 }
 
@@ -76,8 +76,8 @@ func (c *embeddedHashMap[TKey, T]) Move(obj *T, newKey TKey) {
 	if obj == nil {
 		return
 	}
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 }
 
 func (c *embeddedHashMap[TKey, T]) RemoveAll() {
@@ -89,8 +89,8 @@ func (c *embeddedHashMap[TKey, T]) RemoveAllByKey(key TKey) {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		curU := c.getLink(cur)
-		if curU.key.value == key {
+		curLink := c.getLink(cur)
+		if curLink.key.value == key {
 			c.hash.Remove(cur)
 		}
 		cur = next
@@ -102,8 +102,8 @@ func (c *embeddedHashMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		curU := c.getLink(cur)
-		if curU.key.value == key {
+		curLink := c.getLink(cur)
+		if curLink.key.value == key {
 			c.hash.Remove(cur)
 			return
 		}
@@ -116,8 +116,8 @@ func (c *embeddedHashMap[TKey, T]) Reserve(count int) {
 }
 
 func (c *embeddedHashMap[TKey, T]) GetKey(obj *T) TKey {
-	objU := c.getLink(obj)
-	return objU.key.value
+	objLink := c.getLink(obj)
+	return objLink.key.value
 }
 
 func (c *embeddedHashMap[TKey, T]) Count() int {
@@ -141,8 +141,8 @@ func (c *embeddedHashMap[TKey, T]) FindFirst(key TKey) *T {
 	cur := c.hash.FindFirst(hashedKey.hash)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		curU := c.getLink(cur)
-		if curU.key.value == key {
+		curLink := c.getLink(cur)
+		if curLink.key.value == key {
 			return cur
 		}
 		cur = next
@@ -151,12 +151,12 @@ func (c *embeddedHashMap[TKey, T]) FindFirst(key TKey) *T {
 }
 
 func (c *embeddedHashMap[TKey, T]) FindNext(prevResult *T) *T {
-	prevResultU := c.getLink(prevResult)
+	prevResultLink := c.getLink(prevResult)
 	cur := c.hash.FindNext(prevResult)
 	for cur != nil {
 		next := c.hash.FindNext(cur)
-		v := c.getLink(cur)
-		if prevResultU.key.value == v.key.value {
+		curLink := c.getLink(cur)
+		if prevResultLink.key.value == curLink.key.value {
 			return cur
 		}
 		cur = next

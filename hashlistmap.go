@@ -87,8 +87,8 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByKey(key TKey) {
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
-		curU := c.getLink(cur)
-		if curU.key.value == key {
+		curLink := c.getLink(cur)
+		if curLink.key.value == key {
 			c.hashList.Remove(cur)
 		}
 		cur = next
@@ -100,8 +100,8 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
 	cur := c.hashList.FindFirst(hashValue)
 	for cur != nil {
 		next := c.hashList.FindNext(cur)
-		curU := c.getLink(cur)
-		if curU.key.value == key {
+		curLink := c.getLink(cur)
+		if curLink.key.value == key {
 			c.hashList.Remove(cur)
 			return
 		}
@@ -116,8 +116,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertFirst(key TKey, cur *T) *T {
 		return nil
 	}
 
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 	return obj
 }
 
@@ -128,8 +128,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertLast(key TKey, cur *T) *T {
 		return nil
 	}
 
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 	return obj
 }
 
@@ -140,8 +140,8 @@ func (c *embeddedHashListMap[TKey, T]) InsertAfter(key TKey, prev, cur *T) *T {
 		return nil
 	}
 
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 	return obj
 }
 
@@ -152,16 +152,16 @@ func (c *embeddedHashListMap[TKey, T]) InsertBefore(key TKey, after, cur *T) *T 
 		return nil
 	}
 
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 	return obj
 }
 
 func (c *embeddedHashListMap[TKey, T]) Move(obj *T, newKey TKey) {
 	hashedKey := newHashKey(newKey)
 	c.hashList.Move(obj, hashedKey.hash)
-	objU := c.getLink(obj)
-	objU.key = hashedKey
+	objLink := c.getLink(obj)
+	objLink.key = hashedKey
 }
 
 func (c *embeddedHashListMap[TKey, T]) MoveFirst(cur *T) {

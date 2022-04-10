@@ -69,9 +69,9 @@ func (c *embeddedHash[T]) Insert(hashValue HashedKeyValue, obj *T) *T {
 		c.Reserve(c.entryCount + 1)
 	}
 	spot := c.calcSpot(hashValue)
-	objU := c.getLink(obj)
-	objU.hashValue = hashValue
-	objU.hashNext = c.table.Slice()[spot]
+	entryLink := c.getLink(obj)
+	entryLink.hashValue = hashValue
+	entryLink.hashNext = c.table.Slice()[spot]
 	c.table.Slice()[spot] = obj
 	c.entryCount++
 	return obj
@@ -83,16 +83,16 @@ func (c *embeddedHash[T]) Remove(obj *T) *T {
 	prev := &c.table.Slice()[spot]
 
 	for cur != nil {
-		objU := c.getLink(cur)
+		entryLink := c.getLink(cur)
 		if cur == obj {
-			*prev = objU.hashNext
-			objU.hashNext = nil
-			objU.hashValue = 0
+			*prev = entryLink.hashNext
+			entryLink.hashNext = nil
+			entryLink.hashValue = 0
 			c.entryCount--
 			return cur
 		}
-		prev = &objU.hashNext
-		cur = objU.hashNext
+		prev = &entryLink.hashNext
+		cur = entryLink.hashNext
 	}
 	return nil
 }
@@ -144,26 +144,26 @@ func (c *embeddedHash[T]) FindFirst(hashValue HashedKeyValue) *T {
 	spot := c.calcSpot(hashValue)
 	entry := c.table.Slice()[spot]
 	for entry != nil {
-		objU := c.getLink(entry)
-		if objU.hashValue == hashValue {
+		entryLink := c.getLink(entry)
+		if entryLink.hashValue == hashValue {
 			return entry
 		}
-		entry = objU.hashNext
+		entry = entryLink.hashNext
 	}
 	return nil
 }
 
 func (c *embeddedHash[T]) FindNext(prevResult *T) *T {
 	entry := prevResult
-	encryU := c.getLink(entry)
-	hashValue := encryU.hashValue
-	entry = encryU.hashNext
+	entryLink := c.getLink(entry)
+	hashValue := entryLink.hashValue
+	entry = entryLink.hashNext
 	for entry != nil {
-		encryU = c.getLink(entry)
-		if encryU.hashValue == hashValue {
+		entryLink = c.getLink(entry)
+		if entryLink.hashValue == hashValue {
 			return entry
 		}
-		entry = encryU.hashNext
+		entry = entryLink.hashNext
 	}
 	return nil
 }
@@ -183,9 +183,9 @@ func (c *embeddedHash[T]) WalkFirst() *T {
 
 func (c *embeddedHash[T]) WalkNext(prevResult *T) *T {
 	entry := prevResult
-	entryU := c.getLink(entry)
-	spot := c.calcSpot(entryU.hashValue)
-	entry = entryU.hashNext
+	entryLink := c.getLink(entry)
+	spot := c.calcSpot(entryLink.hashValue)
+	entry = entryLink.hashNext
 	if entry != nil {
 		return entry
 	}
@@ -209,8 +209,8 @@ func (c *embeddedHash[T]) RemoveAll() {
 }
 
 func (c *embeddedHash[T]) IsContained(cur *T) bool {
-	curU := c.getLink(cur)
-	if curU.hashValue != 0 || curU.hashNext != nil {
+	curLink := c.getLink(cur)
+	if curLink.hashValue != 0 || curLink.hashNext != nil {
 		return true
 	}
 
@@ -237,19 +237,19 @@ func (c *embeddedHash[T]) onResize(dest, src []*T) {
 
 		var tempBucketRoot *T
 		for current != nil {
-			currentU := c.getLink(current)
-			next := currentU.hashNext
-			currentU.hashNext = tempBucketRoot
+			currentLink := c.getLink(current)
+			next := currentLink.hashNext
+			currentLink.hashNext = tempBucketRoot
 			tempBucketRoot = current
 			current = next
 		}
 
 		current = tempBucketRoot
 		for current != nil {
-			currentU := c.getLink(current)
-			next := currentU.hashNext
-			spot := c.calcSpotForSize(currentU.hashValue, dynamicSize)
-			currentU.hashNext = dest[spot]
+			currentLink := c.getLink(current)
+			next := currentLink.hashNext
+			spot := c.calcSpotForSize(currentLink.hashValue, dynamicSize)
+			currentLink.hashNext = dest[spot]
 			dest[spot] = current
 			current = next
 		}
