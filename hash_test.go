@@ -23,6 +23,22 @@ func TestEmbeddedHashStatic(t *testing.T) {
 	testEmbeddedHash(t, c, testSize, expectedTableUsed, staticSize, removeTarget)
 }
 
+func TestEmbeddedHashStaticReserve(t *testing.T) {
+	const staticSize = 1000
+	const testSize = int(staticSize * 5.5)
+	const expectedTableUsed = 996
+	const removeTarget = (testSize / 2) - 1
+	c := embedded.NewHashStatic[hashEntry](hashEntryLinkField, staticSize)
+	defer func() {
+		err := recover()
+		if err != nil {
+			t.SkipNow()
+		}
+	}()
+	c.Reserve(staticSize)
+	t.FailNow()
+}
+
 func TestEmbeddedHashDynamic(t *testing.T) {
 	const testSize = 5500
 	const expectedTableUsed = 4116
