@@ -1,4 +1,7 @@
 # go-embedded-container
+
+[![Go](https://github.com/heucuva/go-embedded-container/actions/workflows/go.yml/badge.svg)](https://github.com/heucuva/go-embedded-container/actions/workflows/go.yml)
+
 Embedded Containers for Go
 
 ## What are they?
