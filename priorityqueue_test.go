@@ -29,26 +29,10 @@ func TestEmbeddedPriorityQueue(t *testing.T) {
 	}
 }
 
-func BenchmarkEmbeddedPriorityQueue1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedPriorityQueue_Insert(b *testing.B) {
 	priorityQueue := embedded.NewPriorityQueue[int, priorityQueueEntry](priorityQueueEntryLinkField)
-	for i := 0; i < size; i++ {
-		priorityQueue.Insert(i, &priorityQueueEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedPriorityQueue100k(b *testing.B) {
-	size := 100000
-	priorityQueue := embedded.NewPriorityQueue[int, priorityQueueEntry](priorityQueueEntryLinkField)
-	for i := 0; i < size; i++ {
-		priorityQueue.Insert(i, &priorityQueueEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedPriorityQueue1M(b *testing.B) {
-	size := 1000000
-	priorityQueue := embedded.NewPriorityQueue[int, priorityQueueEntry](priorityQueueEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		priorityQueue.Insert(i, &priorityQueueEntry{data: i})
 	}
 }

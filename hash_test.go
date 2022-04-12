@@ -48,55 +48,19 @@ func TestEmbeddedHashDynamic(t *testing.T) {
 	testEmbeddedHash(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
 }
 
-func BenchmarkEmbeddedHashStatic1k(b *testing.B) {
-	size := 1000
-	hash := embedded.NewHashStatic[hashEntry](hashEntryLinkField, size)
-	for i := 0; i < size; i++ {
+func BenchmarkEmbeddedHashStatic_Insert(b *testing.B) {
+	hash := embedded.NewHashStatic[hashEntry](hashEntryLinkField, b.N)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hkey := embedded.HashKey(i)
 		hash.Insert(hkey, &hashEntry{data: i})
 	}
 }
 
-func BenchmarkEmbeddedHashStatic100k(b *testing.B) {
-	size := 100000
-	hash := embedded.NewHashStatic[hashEntry](hashEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashStatic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashStatic[hashEntry](hashEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashDynamic1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedHashDynamic_Insert(b *testing.B) {
 	hash := embedded.NewHashDynamic[hashEntry](hashEntryLinkField)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashDynamic100k(b *testing.B) {
-	size := 100000
-	hash := embedded.NewHashDynamic[hashEntry](hashEntryLinkField)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashDynamic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashDynamic[hashEntry](hashEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hkey := embedded.HashKey(i)
 		hash.Insert(hkey, &hashEntry{data: i})
 	}

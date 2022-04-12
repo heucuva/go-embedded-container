@@ -32,55 +32,36 @@ func TestEmbeddedHashListDynamic(t *testing.T) {
 	testEmbeddedHashList(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
 }
 
-func BenchmarkEmbeddedHashListStatic1k(b *testing.B) {
-	size := 1000
-	hash := embedded.NewHashListStatic[hashListEntry](hashListEntryLinkField, size)
-	for i := 0; i < size; i++ {
+func BenchmarkEmbeddedHashListStatic_InsertFirst(b *testing.B) {
+	hash := embedded.NewHashListStatic[hashListEntry](hashListEntryLinkField, b.N)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		hkey := embedded.HashKey(i)
+		hash.InsertFirst(hkey, &hashListEntry{data: i})
+	}
+}
+
+func BenchmarkEmbeddedHashListStatic_InsertLast(b *testing.B) {
+	hash := embedded.NewHashListStatic[hashListEntry](hashListEntryLinkField, b.N)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hkey := embedded.HashKey(i)
 		hash.InsertLast(hkey, &hashListEntry{data: i})
 	}
 }
 
-func BenchmarkEmbeddedHashListStatic100k(b *testing.B) {
-	size := 100000
-	hash := embedded.NewHashListStatic[hashListEntry](hashListEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.InsertLast(hkey, &hashListEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListStatic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashListStatic[hashListEntry](hashListEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.InsertLast(hkey, &hashListEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListDynamic1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedHashListDynamic_InsertFirst(b *testing.B) {
 	hash := embedded.NewHashListDynamic[hashListEntry](hashListEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hkey := embedded.HashKey(i)
-		hash.InsertLast(hkey, &hashListEntry{data: i})
+		hash.InsertFirst(hkey, &hashListEntry{data: i})
 	}
 }
-
-func BenchmarkEmbeddedHashListDynamic100k(b *testing.B) {
-	size := 100000
+func BenchmarkEmbeddedHashListDynamic_InsertLast(b *testing.B) {
 	hash := embedded.NewHashListDynamic[hashListEntry](hashListEntryLinkField)
-	for i := 0; i < size; i++ {
-		hkey := embedded.HashKey(i)
-		hash.InsertLast(hkey, &hashListEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListDynamic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashListDynamic[hashListEntry](hashListEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hkey := embedded.HashKey(i)
 		hash.InsertLast(hkey, &hashListEntry{data: i})
 	}

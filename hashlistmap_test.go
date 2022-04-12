@@ -32,50 +32,18 @@ func TestEmbeddedHashListMapDynamic(t *testing.T) {
 	testEmbeddedHashListMap(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
 }
 
-func BenchmarkEmbeddedHashListMapStatic1k(b *testing.B) {
-	size := 1000
-	hash := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, size)
-	for i := 0; i < size; i++ {
+func BenchmarkEmbeddedHashListMapStatic_InsertLast(b *testing.B) {
+	hash := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, b.N)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hash.InsertLast(i, &hashListMapEntry{data: i})
 	}
 }
 
-func BenchmarkEmbeddedHashListMapStatic100k(b *testing.B) {
-	size := 100000
-	hash := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListMapStatic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, size)
-	for i := 0; i < size; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListMapDynamic1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedHashListMapDynamic(b *testing.B) {
 	hash := embedded.NewHashListMapDynamic[int, hashListMapEntry](hashListMapEntryLinkField)
-	for i := 0; i < size; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListMapDynamic100k(b *testing.B) {
-	size := 100000
-	hash := embedded.NewHashListMapDynamic[int, hashListMapEntry](hashListMapEntryLinkField)
-	for i := 0; i < size; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedHashListMapDynamic1M(b *testing.B) {
-	size := 1000000
-	hash := embedded.NewHashListMapDynamic[int, hashListMapEntry](hashListMapEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		hash.InsertLast(i, &hashListMapEntry{data: i})
 	}
 }

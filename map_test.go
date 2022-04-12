@@ -30,26 +30,10 @@ func TestEmbeddedMap(t *testing.T) {
 	}
 }
 
-func BenchmarkEmbeddedMap1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedMap_Insert(b *testing.B) {
 	m := embedded.NewMap[int, mapEntry](mapEntryLinkField)
-	for i := 0; i < size; i++ {
-		m.Insert(i, &mapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedMap10k(b *testing.B) {
-	size := 10000
-	m := embedded.NewMap[int, mapEntry](mapEntryLinkField)
-	for i := 0; i < size; i++ {
-		m.Insert(i, &mapEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedMap50k(b *testing.B) {
-	size := 50000
-	m := embedded.NewMap[int, mapEntry](mapEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		m.Insert(i, &mapEntry{data: i})
 	}
 }

@@ -21,27 +21,19 @@ func TestEmbeddedList(t *testing.T) {
 	testEmbeddedList(t, c, testSize, removeTarget)
 }
 
-func BenchmarkEmbeddedList1k(b *testing.B) {
-	size := 1000
+func BenchmarkEmbeddedList_InsertLast(b *testing.B) {
 	list := embedded.NewList[listEntry](listEntryLinkField)
-	for i := 0; i < size; i++ {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
 		list.InsertLast(&listEntry{data: i})
 	}
 }
 
-func BenchmarkEmbeddedList100k(b *testing.B) {
-	size := 100000
+func BenchmarkEmbeddedList_InsertFirst(b *testing.B) {
 	list := embedded.NewList[listEntry](listEntryLinkField)
-	for i := 0; i < size; i++ {
-		list.InsertLast(&listEntry{data: i})
-	}
-}
-
-func BenchmarkEmbeddedList1M(b *testing.B) {
-	size := 1000000
-	list := embedded.NewList[listEntry](listEntryLinkField)
-	for i := 0; i < size; i++ {
-		list.InsertLast(&listEntry{data: i})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		list.InsertFirst(&listEntry{data: i})
 	}
 }
 
