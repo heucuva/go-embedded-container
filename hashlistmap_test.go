@@ -57,7 +57,7 @@ func hashListMapTest(setupFunc hashListMapSetupFunc) func(t *testing.T) {
 			}
 		})
 		t.Run("InsertLast", func(t *testing.T) {
-			for i := 2; i < len(data)-2; i++ {
+			for i := 2; i < len(data)-1; i++ {
 				key := hashListMapKey(i)
 				expected := &data[key]
 				if result := hashListMap.InsertLast(key, expected); result != expected {
@@ -136,20 +136,26 @@ func hashListMapTest(setupFunc hashListMapSetupFunc) func(t *testing.T) {
 			}
 		})
 		t.Run("IsContained", func(t *testing.T) {
-			key := hashListMapKey(0)
-			expected := true
-			if result := hashListMap.IsContained(&data[key]); result != expected {
-				t.Fatalf("expected %v, but got %v", expected, result)
-			}
-			expected = false
-			var entry *hashListMapValue
-			if result := hashListMap.IsContained(entry); result != expected {
-				t.Fatalf("expected %v, but got %v", expected, result)
-			}
-			entry = &hashListMapValue{data: 0}
-			if result := hashListMap.IsContained(entry); result != expected {
-				t.Fatalf("expected %v, but got %v", expected, result)
-			}
+			t.Run("Contained", func(t *testing.T) {
+				expected := true
+				if result := hashListMap.IsContained(&data[0]); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Uncontained", func(t *testing.T) {
+				expected := false
+				entry := &hashListMapValue{data: 0}
+				if result := hashListMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Nil", func(t *testing.T) {
+				expected := false
+				var entry *hashListMapValue
+				if result := hashListMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
 		})
 		t.Run("RemoveAll", func(t *testing.T) {
 			hashListMap.RemoveAll()

@@ -41,6 +41,9 @@ func (l *ListLink[M]) getItem(linkFieldOfs uintptr) *M {
 }
 
 func getListLink[T any](obj *T, linkFieldOfs uintptr) *ListLink[T] {
+	if obj == nil {
+		return nil
+	}
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*ListLink[T])(u)
 }

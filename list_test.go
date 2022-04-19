@@ -37,7 +37,7 @@ func TestEmbeddedList(t *testing.T) {
 		data[i].data = i
 	}
 	t.Run("InsertLast", func(t *testing.T) {
-		for i := 2; i < len(data)-2; i++ {
+		for i := 2; i < len(data)-1; i++ {
 			expected := &data[i]
 			if result := list.InsertLast(expected); result != expected {
 				t.Fatalf("expected %v, but got %v", expected, result)
@@ -89,19 +89,26 @@ func TestEmbeddedList(t *testing.T) {
 		}
 	})
 	t.Run("IsContained", func(t *testing.T) {
-		expected := true
-		if result := list.IsContained(&data[0]); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
-		expected = false
-		var entry *listValue
-		if result := list.IsContained(entry); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
-		entry = &listValue{data: 0}
-		if result := list.IsContained(entry); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
+		t.Run("Contained", func(t *testing.T) {
+			expected := true
+			if result := list.IsContained(&data[0]); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Uncontained", func(t *testing.T) {
+			expected := false
+			entry := &listValue{data: 0}
+			if result := list.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Nil", func(t *testing.T) {
+			expected := false
+			var entry *listValue
+			if result := list.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
 	})
 	t.Run("RemoveAll", func(t *testing.T) {
 		list.RemoveAll()

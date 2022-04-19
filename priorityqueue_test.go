@@ -54,25 +54,32 @@ func TestEmbeddedPriorityQueue(t *testing.T) {
 	})
 	t.Run("TopWithPriority", func(t *testing.T) {
 		priority := priorityQueuePriority(3)
-		expected := &data[3]
+		expected := &data[0]
 		if result := priorityQueue.TopWithPriority(priority); result != expected {
 			t.Fatalf("expected %v, but got %v", expected, result)
 		}
 	})
 	t.Run("IsContained", func(t *testing.T) {
-		expected := true
-		if result := priorityQueue.IsContained(&data[0]); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
-		expected = false
-		var entry *priorityQueueValue
-		if result := priorityQueue.IsContained(entry); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
-		entry = &priorityQueueValue{data: 0}
-		if result := priorityQueue.IsContained(entry); result != expected {
-			t.Fatalf("expected %v, but got %v", expected, result)
-		}
+		t.Run("Contained", func(t *testing.T) {
+			expected := true
+			if result := priorityQueue.IsContained(&data[0]); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Uncontained", func(t *testing.T) {
+			expected := false
+			entry := &priorityQueueValue{data: 0}
+			if result := priorityQueue.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Nil", func(t *testing.T) {
+			expected := false
+			var entry *priorityQueueValue
+			if result := priorityQueue.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
 	})
 	t.Run("RemoveAll", func(t *testing.T) {
 		priorityQueue.RemoveAll()

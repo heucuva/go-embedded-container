@@ -11,6 +11,9 @@ type HashListLink[M any] struct {
 }
 
 func getHashListLink[T any](obj *T, linkFieldOfs uintptr) *HashListLink[T] {
+	if obj == nil {
+		return nil
+	}
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*HashListLink[T])(u)
 }

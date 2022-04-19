@@ -486,6 +486,9 @@ func (c *embeddedMap[TKey, T]) RemoveAll() {
 }
 
 func (c *embeddedMap[TKey, T]) IsContained(obj *T) bool {
+	if obj == nil {
+		return false
+	}
 	walk := c.FindFirst(c.GetKey(obj))
 	for walk != nil {
 		if walk == obj {

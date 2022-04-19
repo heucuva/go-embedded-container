@@ -201,5 +201,6 @@ func (c *embeddedList[T]) IsEmpty() bool {
 }
 
 func (c *embeddedList[T]) IsContained(cur *T) bool {
-	return c.getLink(cur).isContained(c.linkField, c.head)
+	curLink := c.getLink(cur)
+	return curLink != nil && curLink.isContained(c.linkField, c.head)
 }
