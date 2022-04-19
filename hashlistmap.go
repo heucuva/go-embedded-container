@@ -42,6 +42,10 @@ func (c *embeddedHashListMap[TKey, T]) getLink(obj *T) *HashListMapLink[TKey, T]
 	return getHashListMapLink[TKey](obj, c.linkField)
 }
 
+func (c *embeddedHashListMap[TKey, T]) IsStatic() bool {
+	return c.hashList.IsStatic()
+}
+
 func (c *embeddedHashListMap[TKey, T]) First() *T {
 	return c.hashList.First()
 }
@@ -83,23 +87,21 @@ func (c *embeddedHashListMap[TKey, T]) RemoveAll() {
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveAllByKey(key TKey) {
-	hashValue := newHashKey(key).hash
-	cur := c.hashList.FindFirst(hashValue)
+	cur := c.FindFirst(key)
 	for cur != nil {
-		next := c.hashList.FindNext(cur)
+		next := c.FindNext(cur)
 		curLink := c.getLink(cur)
 		if curLink.key.value == key {
-			c.hashList.Remove(cur)
+			c.Remove(cur)
 		}
 		cur = next
 	}
 }
 
 func (c *embeddedHashListMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
-	hashValue := newHashKey(key).hash
-	cur := c.hashList.FindFirst(hashValue)
+	cur := c.FindFirst(key)
 	for cur != nil {
-		next := c.hashList.FindNext(cur)
+		next := c.FindNext(cur)
 		curLink := c.getLink(cur)
 		if curLink.key.value == key {
 			c.hashList.Remove(cur)
@@ -158,10 +160,9 @@ func (c *embeddedHashListMap[TKey, T]) InsertBefore(key TKey, after, cur *T) *T 
 }
 
 func (c *embeddedHashListMap[TKey, T]) Move(obj *T, newKey TKey) {
-	hashedKey := newHashKey(newKey)
-	c.hashList.Move(obj, hashedKey.hash)
 	objLink := c.getLink(obj)
-	objLink.key = hashedKey
+	objLink.key = newHashKey(newKey)
+	c.hashList.Move(obj, objLink.key.hash)
 }
 
 func (c *embeddedHashListMap[TKey, T]) MoveFirst(cur *T) {
@@ -181,8 +182,7 @@ func (c *embeddedHashListMap[TKey, T]) MoveBefore(dest, cur *T) {
 }
 
 func (c *embeddedHashListMap[TKey, T]) FindFirst(key TKey) *T {
-	hashedKey := newHashKey(key)
-	return c.hashList.FindFirst(hashedKey.hash)
+	return c.hashList.FindFirst(HashKey(key))
 }
 
 func (c *embeddedHashListMap[TKey, T]) FindNext(prevResult *T) *T {

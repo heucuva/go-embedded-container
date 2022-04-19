@@ -47,9 +47,9 @@ const (
 )
 
 type embeddedHash[T any] struct {
-	entryCount int
-	linkField  uintptr
 	table      array.Array[*T]
+	linkField  uintptr
+	entryCount int
 }
 
 func (c *embeddedHash[T]) getLink(obj *T) *HashLink[T] {
@@ -64,6 +64,10 @@ func (c *embeddedHash[T]) calcSpotForSize(hashValue HashedKeyValue, tableSize in
 	return int(hashValue % HashedKeyValue(tableSize))
 }
 
+func (c *embeddedHash[T]) IsStatic() bool {
+	return c.table.IsStatic()
+}
+
 func (c *embeddedHash[T]) Insert(hashValue HashedKeyValue, obj *T) *T {
 	if !c.table.IsStatic() {
 		c.Reserve(c.entryCount + 1)
@@ -71,16 +75,16 @@ func (c *embeddedHash[T]) Insert(hashValue HashedKeyValue, obj *T) *T {
 	spot := c.calcSpot(hashValue)
 	entryLink := c.getLink(obj)
 	entryLink.hashValue = hashValue
-	entryLink.hashNext = c.table.Slice()[spot]
-	c.table.Slice()[spot] = obj
+	entryLink.hashNext = c.table.At(spot)
+	c.table.Set(spot, obj)
 	c.entryCount++
 	return obj
 }
 
 func (c *embeddedHash[T]) Remove(obj *T) *T {
 	spot := c.calcSpot(c.getLink(obj).hashValue)
-	cur := c.table.Slice()[spot]
-	prev := &c.table.Slice()[spot]
+	prev := c.table.Ptr(spot)
+	cur := *prev
 
 	for cur != nil {
 		entryLink := c.getLink(cur)
@@ -103,11 +107,7 @@ func (c *embeddedHash[T]) Move(obj *T, newHashValue HashedKeyValue) {
 }
 
 func (c *embeddedHash[T]) Reserve(count int) {
-	if c.table.IsStatic() {
-		panic("cannot reserve a count with a static table size")
-	} else {
-		c.table.Reserve(count)
-	}
+	c.table.Reserve(count)
 }
 
 func (c *embeddedHash[T]) GetKey(obj *T) HashedKeyValue {
@@ -142,13 +142,13 @@ func (c *embeddedHash[T]) IsEmpty() bool {
 
 func (c *embeddedHash[T]) FindFirst(hashValue HashedKeyValue) *T {
 	spot := c.calcSpot(hashValue)
-	entry := c.table.Slice()[spot]
-	for entry != nil {
+	var next *T
+	for entry := c.table.At(spot); entry != nil; entry = next {
 		entryLink := c.getLink(entry)
 		if entryLink.hashValue == hashValue {
 			return entry
 		}
-		entry = entryLink.hashNext
+		next = entryLink.hashNext
 	}
 	return nil
 }
@@ -156,6 +156,9 @@ func (c *embeddedHash[T]) FindFirst(hashValue HashedKeyValue) *T {
 func (c *embeddedHash[T]) FindNext(prevResult *T) *T {
 	entry := prevResult
 	entryLink := c.getLink(entry)
+	if entryLink == nil {
+		return nil
+	}
 	hashValue := entryLink.hashValue
 	entry = entryLink.hashNext
 	for entry != nil {
@@ -184,14 +187,14 @@ func (c *embeddedHash[T]) WalkFirst() *T {
 func (c *embeddedHash[T]) WalkNext(prevResult *T) *T {
 	entry := prevResult
 	entryLink := c.getLink(entry)
-	spot := c.calcSpot(entryLink.hashValue)
 	entry = entryLink.hashNext
 	if entry != nil {
 		return entry
 	}
 
+	spot := c.calcSpot(entryLink.hashValue)
 	for spot++; spot < c.table.Size(); spot++ {
-		entry = c.table.Slice()[spot]
+		entry = c.table.At(spot)
 		if entry != nil {
 			return entry
 		}
@@ -210,16 +213,17 @@ func (c *embeddedHash[T]) RemoveAll() {
 
 func (c *embeddedHash[T]) IsContained(cur *T) bool {
 	curLink := c.getLink(cur)
+	if curLink == nil {
+		return false
+	}
 	if curLink.hashValue != 0 || curLink.hashNext != nil {
 		return true
 	}
 
-	walk := c.table.Slice()[0]
-	for walk != nil {
-		if walk == cur {
+	for obj := c.FindFirst(curLink.hashValue); obj != nil; obj = c.FindNext(obj) {
+		if obj == cur {
 			return true
 		}
-		walk = c.getLink(walk).hashNext
 	}
 	return false
 }

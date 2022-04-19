@@ -9,6 +9,8 @@ type TableInterface interface {
 	GetTableUsed() int
 	Reserve(count int)
 	IsEmpty() bool
+
+	IsStatic() bool
 }
 
 type ListInterface[TKey any, T any] interface {

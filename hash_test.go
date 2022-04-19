@@ -1,6 +1,7 @@
 package embedded_test
 
 import (
+	"math/rand"
 	"testing"
 	"unsafe"
 
@@ -9,138 +10,203 @@ import (
 
 type hashEntry struct {
 	data int
-	link embedded.HashLink[hashEntry]
+	link embedded.HashLink[hashValue]
 }
 
 var hashEntryLinkField = unsafe.Offsetof(hashEntry{}.link)
 
-func TestEmbeddedHashStatic(t *testing.T) {
-	const staticSize = 1000
-	const testSize = int(staticSize * 5.5)
-	const expectedTableUsed = 996
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashStatic[hashEntry](hashEntryLinkField, staticSize)
-	testEmbeddedHash(t, c, testSize, expectedTableUsed, staticSize, removeTarget)
+const hashDefaultSize = 1000
+
+type (
+	hashValue     hashEntry
+	hashType      embedded.Hash[hashValue]
+	hashSetupFunc func(size int) hashType
+)
+
+func (h hashValue) Hash() embedded.HashedKeyValue {
+	return embedded.HashedKeyValue(h.data)
 }
 
-func TestEmbeddedHashStaticReserve(t *testing.T) {
-	const staticSize = 1000
-	const testSize = int(staticSize * 5.5)
-	const expectedTableUsed = 996
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashStatic[hashEntry](hashEntryLinkField, staticSize)
+func hashSetupStatic(size int) hashType {
+	return embedded.NewHashStatic[hashValue](hashEntryLinkField, size)
+}
+
+func hashSetupDynamic(size int) hashType {
+	return embedded.NewHashDynamic[hashValue](hashEntryLinkField)
+}
+
+func TestEmbeddedHash(t *testing.T) {
+	t.Run("Static", hashTest(hashSetupStatic))
+	t.Run("Dynamic", hashTest(hashSetupDynamic))
+}
+
+func hashTest(setupFunc hashSetupFunc) func(t *testing.T) {
+	return func(t *testing.T) {
+		hash := setupFunc(hashDefaultSize)
+		data := make([]hashValue, hashDefaultSize)
+		for i := 0; i < len(data); i++ {
+			data[i].data = i
+		}
+		t.Run("Reserve", func(t *testing.T) {
+			if res := hashTestReserve(hash, hashDefaultSize*1.75); res != nil {
+				if !hash.IsStatic() {
+					t.Fatal("dynamic hash is expected to successfully reserve")
+				}
+			}
+		})
+		t.Run("Insert", func(t *testing.T) {
+			for i := range data {
+				expected := &data[i]
+				if result := hash.Insert(expected.Hash(), expected); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("FindFirst", func(t *testing.T) {
+			for i := range data {
+				expected := &data[i]
+				if result := hash.FindFirst(expected.Hash()); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("FindNext", func(t *testing.T) {
+			for i := range data {
+				entry := &data[i]
+				var expected *hashValue
+				if result := hash.FindNext(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("WalkFirst", func(t *testing.T) {
+			expected := &data[0]
+			if result := hash.WalkFirst(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("WalkNext", func(t *testing.T) {
+			entry := hash.WalkFirst()
+			expected := &data[1]
+			if result := hash.WalkNext(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsContained", func(t *testing.T) {
+			expected := true
+			if result := hash.IsContained(&data[0]); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+			expected = false
+			var entry *hashValue
+			if result := hash.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+			entry = &hashValue{data: 0}
+			if result := hash.IsContained(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("RemoveAll", func(t *testing.T) {
+			hash.RemoveAll()
+		})
+	}
+}
+
+func hashTestReserve(hash hashType, size int) (err interface{}) {
 	defer func() {
-		err := recover()
-		if err != nil {
-			t.SkipNow()
-		}
+		err = recover()
 	}()
-	c.Reserve(staticSize)
-	t.FailNow()
+	hash.Reserve(size)
+	err = nil
+	return
 }
 
-func TestEmbeddedHashDynamic(t *testing.T) {
-	const testSize = 5500
-	const expectedTableUsed = 4116
-	const expectedTableSize = 8192 // next power of 2 over 5500
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashDynamic[hashEntry](hashEntryLinkField)
-	testEmbeddedHash(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
+func BenchmarkEmbeddedHash(b *testing.B) {
+	b.Run("Static", hashBench(hashSetupStatic))
+	b.Run("Dynamic", hashBench(hashSetupDynamic))
 }
 
-func BenchmarkEmbeddedHashStatic_Insert(b *testing.B) {
-	hash := embedded.NewHashStatic[hashEntry](hashEntryLinkField, b.N)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
+func hashBench(setupFunc hashSetupFunc) func(b *testing.B) {
+	return func(b *testing.B) {
+		hash := setupFunc(hashDefaultSize)
+		data := make([]hashValue, b.N)
+		for i := 0; i < len(data); i++ {
+			data[i].data = i
+		}
 
-func BenchmarkEmbeddedHashDynamic_Insert(b *testing.B) {
-	hash := embedded.NewHashDynamic[hashEntry](hashEntryLinkField)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hkey := embedded.HashKey(i)
-		hash.Insert(hkey, &hashEntry{data: i})
-	}
-}
-
-func testEmbeddedHash(t *testing.T, c embedded.Hash[hashEntry], testSize, expectedTableUsed, expectedTableSize int, removeTarget int) {
-	for i := 0; i < testSize; i++ {
-		hkey := embedded.HashKey(i)
-		c.Insert(hkey, &hashEntry{data: i})
-	}
-
-	if c.IsEmpty() {
-		t.Fatal("embedded hash should not be empty")
-	}
-
-	if actualTableSize := c.GetTableSize(); actualTableSize != expectedTableSize {
-		t.Fatalf("unexpected table size (actual %d != expected %d)", actualTableSize, expectedTableSize)
-	}
-
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != expectedTableUsed {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, expectedTableUsed)
-	}
-
-	for i := testSize - 1; i >= 0; i-- {
-		hkey := embedded.HashKey(i)
-		var entry *hashEntry
-		for cur := c.FindFirst(hkey); cur != nil; cur = c.FindNext(cur) {
-			if cur.data == i {
-				entry = cur
-				break
+		b.Run("IsStatic", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hash.IsStatic()
+		})
+		b.Run("Reserve", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			_ = hashBenchReserve(hash, int(float64(b.N)*1.75))
+		})
+		b.Run("Insert", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := range data {
+				hash.Insert(data[i].Hash(), &data[i])
 			}
-		}
-		if entry == nil {
-			t.Fatal("expected entry not found")
-		}
-
-		if actualHash := c.GetKey(entry); actualHash != hkey {
-			t.Fatalf("hashed key mismatch detected (actual %08X != expected %08X", actualHash, hkey)
-		}
-
-		if i == removeTarget {
-			if !c.IsContained(entry) {
-				t.Fatal("embedded hash reports that contained item is not present")
+		})
+		b.Run("FindFirst", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hash.FindFirst(data[i%len(data)].Hash())
 			}
-			c.Remove(entry)
-			if c.IsContained(entry) {
-				t.Fatal("embedded hash reports that removed item is present")
+		})
+		b.Run("FindNext", func(b *testing.B) {
+			entry := hash.FindFirst(data[int(rand.Int31())%len(data)].Hash())
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hash.FindNext(entry)
 			}
-		}
+		})
+		b.Run("WalkFirst", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hash.WalkFirst()
+			}
+		})
+		b.Run("WalkNext", func(b *testing.B) {
+			entry := hash.WalkFirst()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hash.WalkNext(entry)
+			}
+		})
+		b.Run("IsContained", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hash.IsContained(&data[i%len(data)])
+			}
+		})
+		b.Run("RemoveAll", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hash.RemoveAll()
+		})
 	}
+}
 
-	for walk := c.WalkFirst(); walk != nil; walk = c.WalkNext(walk) {
-		if walk.data == removeTarget {
-			t.Fatal("removed item still present in embedded hash")
-		}
+func hashBenchReserve(hash hashType, size int) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	if size > 1000000 {
+		// too big
+		err = "too big"
+		return
 	}
-
-	expectedCount := c.Count()
-
-	if moveItem := c.WalkFirst(); moveItem != nil {
-		oldKey := c.GetKey(moveItem)
-		newKey := embedded.HashKey(testSize)
-		for i := 1; newKey == oldKey; i++ {
-			newKey = embedded.HashKey(testSize + i)
-		}
-		c.Move(moveItem, newKey)
-		currentKey := c.GetKey(moveItem)
-		if currentKey != newKey {
-			t.Fatalf("moved item did not move to expected key hash (old %08X -> actual %08X != expected %08X", oldKey, currentKey, newKey)
-		}
-	} else {
-		t.Fatal("could not find any item in embedded hash")
-	}
-
-	if actualCount := c.Count(); actualCount != expectedCount {
-		t.Fatalf("count changed unexpectedly (actual %d != expected %d)", actualCount, expectedCount)
-	}
-
-	c.RemoveAll()
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != 0 {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, 0)
-	}
+	hash.Reserve(size)
+	err = nil
+	return
 }

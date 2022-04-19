@@ -49,8 +49,8 @@ func NewMap[TKey MapKeyType, T any](linkField uintptr) Map[TKey, T] {
 
 type embeddedMap[TKey MapKeyType, T any] struct {
 	root      *T
-	count     int
 	linkField uintptr
+	count     int
 }
 
 func (c *embeddedMap[TKey, T]) getLink(obj *T) *MapLink[TKey, T] {
@@ -244,6 +244,9 @@ func (c *embeddedMap[TKey, T]) Last() *T {
 
 func (c *embeddedMap[TKey, T]) Next(cur *T) *T {
 	curLink := c.getLink(cur)
+	if curLink == nil {
+		return nil
+	}
 	if curLink.right != nil {
 		walk := curLink.right
 		for {
@@ -266,6 +269,9 @@ func (c *embeddedMap[TKey, T]) Next(cur *T) *T {
 
 func (c *embeddedMap[TKey, T]) Prev(cur *T) *T {
 	curLink := c.getLink(cur)
+	if curLink == nil {
+		return nil
+	}
 	if curLink.left != nil {
 		walk := curLink.left
 		for {
@@ -337,15 +343,15 @@ func (c *embeddedMap[TKey, T]) Position(index int) *T {
 func (c *embeddedMap[TKey, T]) Insert(key TKey, obj *T) *T {
 	var parent *T
 	parentBranch := &c.root
-	walk := c.root
+	walk := *parentBranch
 	for walk != nil {
 		parent = walk
-		c.getLink(parent).position++
 		walkLink := c.getLink(walk)
+		walkLink.position++
 		if key < walkLink.key {
 			parentBranch = &walkLink.left
 			walk = *parentBranch
-		} else if walkLink.key < key {
+		} else {
 			parentBranch = &walkLink.right
 			walk = *parentBranch
 		}
@@ -498,9 +504,12 @@ func (c *embeddedMap[TKey, T]) insertFixup(cur *T) {
 		parent := curLink.parent
 		grand := parentLink.parent
 		grandLink := c.getLink(grand)
-		uncle := grandLink.right
-		if grandLink.left == parent {
-			uncle = grandLink.left
+		var uncle *T
+		if grandLink != nil {
+			uncle = grandLink.right
+			if grandLink.left == parent {
+				uncle = grandLink.left
+			}
 		}
 
 		var uncleLink *MapLink[TKey, T]
@@ -513,7 +522,7 @@ func (c *embeddedMap[TKey, T]) insertFixup(cur *T) {
 			uncleLink.red = false
 			grandLink.red = true
 			c.insertFixup(grand)
-		} else {
+		} else if grandLink != nil {
 			if cur == parentLink.right && parent == grandLink.left {
 				c.rotateLeft(parent)
 				cur = curLink.left
@@ -547,16 +556,22 @@ func (c *embeddedMap[TKey, T]) rotateLeft(cur *T) {
 	curLink.right = left
 
 	rightLink := c.getLink(right)
-	rightLink.parent = parent
-	rightLink.left = cur
+	var rightPos int
+	if rightLink != nil {
+		rightLink.parent = parent
+		rightLink.left = cur
+		rightPos = rightLink.position
+	}
 
-	newC := curLink.position - rightLink.position
+	newC := curLink.position - rightPos
 	if left != nil {
 		leftLink := c.getLink(left)
 		leftLink.parent = cur
 		newC += leftLink.position
 	}
-	rightLink.position = curLink.position
+	if rightLink != nil {
+		rightLink.position = curLink.position
+	}
 	curLink.position = newC
 
 	if parent == nil {

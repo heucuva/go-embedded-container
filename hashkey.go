@@ -1,8 +1,9 @@
 package embedded
 
 import (
-	"fmt"
+	"encoding/binary"
 	"hash/fnv"
+	"reflect"
 
 	"golang.org/x/exp/constraints"
 )
@@ -12,6 +13,10 @@ type HashMapKeyType interface {
 }
 
 type HashedKeyValue uint64
+
+type Hashable interface {
+	Hash() HashedKeyValue
+}
 
 type hashKey[TKey HashMapKeyType] struct {
 	value TKey
@@ -26,7 +31,18 @@ func newHashKey[TKey HashMapKeyType](key TKey) hashKey[TKey] {
 }
 
 func HashKey[TKey HashMapKeyType](key TKey) HashedKeyValue {
+	if v, ok := (any(key)).(Hashable); ok {
+		return v.Hash()
+	} else {
+		v := reflect.ValueOf(key)
+		if v.CanUint() {
+			return HashedKeyValue(v.Uint())
+		} else if v.CanInt() {
+			return HashedKeyValue(uint64(v.Int()))
+		}
+	}
+
 	h := fnv.New64()
-	_, _ = h.Write([]byte(fmt.Sprint(key)))
+	binary.Write(h, binary.BigEndian, key)
 	return HashedKeyValue(h.Sum64())
 }

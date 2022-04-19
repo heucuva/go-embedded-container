@@ -34,6 +34,18 @@ func (a *dynamicArray[T]) Slice() []T {
 	return a.data
 }
 
+func (a *dynamicArray[T]) At(idx int) T {
+	return a.data[idx]
+}
+
+func (a *dynamicArray[T]) Ptr(idx int) *T {
+	return &a.data[idx]
+}
+
+func (a *dynamicArray[T]) Set(idx int, value T) {
+	a.data[idx] = value
+}
+
 func (a *dynamicArray[T]) resize(count int) {
 	dynamicTableOld := a.data
 
