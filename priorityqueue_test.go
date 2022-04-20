@@ -34,9 +34,11 @@ func priorityQueueSetup(size int) priorityQueueType {
 func TestEmbeddedPriorityQueue(t *testing.T) {
 	priorityQueue := priorityQueueSetup(priorityQueueDefaultSize)
 	data := make([]priorityQueueValue, priorityQueueDefaultSize)
-	for i := 0; i < len(data); i++ {
-		data[i].data = i
+	for i := range data {
+		entry := &data[i]
+		entry.data = i
 	}
+
 	t.Run("Insert", func(t *testing.T) {
 		for i := 0; i < len(data); i++ {
 			priority := priorityQueuePriority(i)
@@ -45,6 +47,20 @@ func TestEmbeddedPriorityQueue(t *testing.T) {
 				t.Fatalf("expected %v, but got %v", expected, result)
 			}
 		}
+	})
+	t.Run("Count", func(t *testing.T) {
+		expected := len(data)
+		if result := priorityQueue.Count(); result != expected {
+			t.Fatalf("expected %v, but got %v", expected, result)
+		}
+	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Full", func(t *testing.T) {
+			expected := false
+			if result := priorityQueue.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
 	})
 	t.Run("Top", func(t *testing.T) {
 		expected := &data[0]
@@ -84,13 +100,22 @@ func TestEmbeddedPriorityQueue(t *testing.T) {
 	t.Run("RemoveAll", func(t *testing.T) {
 		priorityQueue.RemoveAll()
 	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Empty", func(t *testing.T) {
+			expected := true
+			if result := priorityQueue.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+	})
 }
 
 func BenchmarkEmbeddedPriorityQueue(b *testing.B) {
 	priorityQueue := priorityQueueSetup(priorityQueueDefaultSize)
 	data := make([]priorityQueueValue, b.N)
-	for i := 0; i < len(data); i++ {
-		data[i].data = i
+	for i := range data {
+		entry := &data[i]
+		entry.data = i
 	}
 
 	b.Run("Insert", func(b *testing.B) {

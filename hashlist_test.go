@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	embedded "github.com/heucuva/go-embedded-container"
+	"github.com/heucuva/go-embedded-container/internal/util"
 )
 
 type hashListEntry struct {
@@ -43,15 +44,21 @@ func TestEmbeddedHashList(t *testing.T) {
 func hashListTest(setupFunc hashListSetupFunc) func(t *testing.T) {
 	return func(t *testing.T) {
 		hashList := setupFunc(hashListDefaultSize)
+		expectedTableSize := hashListDefaultSize
 		data := make([]hashListValue, hashListDefaultSize)
-		for i := 0; i < len(data); i++ {
-			data[i].data = i
+		for i := range data {
+			entry := &data[i]
+			entry.data = i
 		}
+
 		t.Run("Reserve", func(t *testing.T) {
-			if res := hashListTestReserve(hashList, hashListDefaultSize*1.75); res != nil {
+			newSize := int(hashDefaultSize * 1.75)
+			if res := hashListTestReserve(hashList, newSize); res != nil {
 				if !hashList.IsStatic() {
 					t.Fatal("dynamic hashList is expected to successfully reserve")
 				}
+			} else if !hashList.IsStatic() {
+				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
 			}
 		})
 		t.Run("InsertLast", func(t *testing.T) {
@@ -79,6 +86,32 @@ func hashListTest(setupFunc hashListSetupFunc) func(t *testing.T) {
 			if result := hashList.InsertAfter(expected.Hash(), &data[len(data)-2], expected); result != expected {
 				t.Fatalf("expected %v, but got %v", expected, result)
 			}
+		})
+		t.Run("Count", func(t *testing.T) {
+			expected := len(data)
+			if result := hashList.Count(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableSize", func(t *testing.T) {
+			expected := expectedTableSize
+			if result := hashList.GetTableSize(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableUsed", func(t *testing.T) {
+			expected := len(data)
+			if result := hashList.GetTableUsed(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Full", func(t *testing.T) {
+				expected := false
+				if result := hashList.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
 		})
 		t.Run("FindFirst", func(t *testing.T) {
 			for i := range data {
@@ -148,6 +181,14 @@ func hashListTest(setupFunc hashListSetupFunc) func(t *testing.T) {
 		t.Run("RemoveAll", func(t *testing.T) {
 			hashList.RemoveAll()
 		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Empty", func(t *testing.T) {
+				expected := true
+				if result := hashList.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
 	}
 }
 
@@ -169,8 +210,9 @@ func hashListBench(setupFunc hashListSetupFunc) func(b *testing.B) {
 	return func(b *testing.B) {
 		hashList := setupFunc(hashListDefaultSize)
 		data := make([]hashListValue, b.N)
-		for i := 0; i < len(data); i++ {
-			data[i].data = i
+		for i := range data {
+			entry := &data[i]
+			entry.data = i
 		}
 
 		b.Run("IsStatic", func(b *testing.B) {

@@ -48,6 +48,20 @@ func TestEmbeddedMap(t *testing.T) {
 			}
 		}
 	})
+	t.Run("Count", func(t *testing.T) {
+		expected := len(data)
+		if result := m.Count(); result != expected {
+			t.Fatalf("expected %v, but got %v", expected, result)
+		}
+	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Full", func(t *testing.T) {
+			expected := false
+			if result := m.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+	})
 	t.Run("FindFirst", func(t *testing.T) {
 		for i := range data {
 			key := mapKey(i)
@@ -122,6 +136,14 @@ func TestEmbeddedMap(t *testing.T) {
 	})
 	t.Run("RemoveAll", func(t *testing.T) {
 		m.RemoveAll()
+	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Empty", func(t *testing.T) {
+			expected := true
+			if result := m.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
 	})
 }
 

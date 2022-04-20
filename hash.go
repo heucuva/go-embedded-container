@@ -111,7 +111,10 @@ func (c *embeddedHash[T]) Reserve(count int) {
 }
 
 func (c *embeddedHash[T]) GetKey(obj *T) HashedKeyValue {
-	return c.getLink(obj).hashValue
+	if objLink := c.getLink(obj); objLink != nil {
+		return objLink.hashValue
+	}
+	return HashedKeyValue(0)
 }
 
 func (c *embeddedHash[T]) Count() int {

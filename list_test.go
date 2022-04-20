@@ -33,9 +33,11 @@ func listSetup(size int) listType {
 func TestEmbeddedList(t *testing.T) {
 	list := listSetup(listDefaultSize)
 	data := make([]listValue, listDefaultSize)
-	for i := 0; i < len(data); i++ {
-		data[i].data = i
+	for i := range data {
+		entry := &data[i]
+		entry.data = i
 	}
+
 	t.Run("InsertLast", func(t *testing.T) {
 		for i := 2; i < len(data)-1; i++ {
 			expected := &data[i]
@@ -61,6 +63,20 @@ func TestEmbeddedList(t *testing.T) {
 		if result := list.InsertAfter(&data[len(data)-2], expected); result != expected {
 			t.Fatalf("expected %v, but got %v", expected, result)
 		}
+	})
+	t.Run("Count", func(t *testing.T) {
+		expected := len(data)
+		if result := list.Count(); result != expected {
+			t.Fatalf("expected %v, but got %v", expected, result)
+		}
+	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Full", func(t *testing.T) {
+			expected := false
+			if result := list.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
 	})
 	t.Run("First", func(t *testing.T) {
 		expected := &data[0]
@@ -113,13 +129,22 @@ func TestEmbeddedList(t *testing.T) {
 	t.Run("RemoveAll", func(t *testing.T) {
 		list.RemoveAll()
 	})
+	t.Run("IsEmpty", func(t *testing.T) {
+		t.Run("Empty", func(t *testing.T) {
+			expected := true
+			if result := list.IsEmpty(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+	})
 }
 
 func BenchmarkEmbeddedList(b *testing.B) {
 	list := listSetup(listDefaultSize)
 	data := make([]listValue, b.N)
-	for i := 0; i < len(data); i++ {
-		data[i].data = i
+	for i := range data {
+		entry := &data[i]
+		entry.data = i
 	}
 
 	b.Run("InsertLast", func(b *testing.B) {

@@ -161,6 +161,9 @@ func (c *embeddedHashListMap[TKey, T]) InsertBefore(key TKey, after, cur *T) *T 
 
 func (c *embeddedHashListMap[TKey, T]) Move(obj *T, newKey TKey) {
 	objLink := c.getLink(obj)
+	if objLink == nil {
+		return
+	}
 	objLink.key = newHashKey(newKey)
 	c.hashList.Move(obj, objLink.key.hash)
 }
@@ -190,7 +193,11 @@ func (c *embeddedHashListMap[TKey, T]) FindNext(prevResult *T) *T {
 }
 
 func (c *embeddedHashListMap[TKey, T]) GetKey(obj *T) TKey {
-	return c.getLink(obj).key.value
+	if objLink := c.getLink(obj); objLink != nil {
+		return objLink.key.value
+	}
+	var empty TKey
+	return empty
 }
 
 func (c *embeddedHashListMap[TKey, T]) GetTableSize() int {

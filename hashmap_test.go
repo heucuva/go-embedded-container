@@ -6,6 +6,7 @@ import (
 	"unsafe"
 
 	embedded "github.com/heucuva/go-embedded-container"
+	"github.com/heucuva/go-embedded-container/internal/util"
 )
 
 type hashMapEntry struct {
@@ -44,16 +45,20 @@ func TestEmbeddedHashMap(t *testing.T) {
 func hashMapTest(setupFunc hashMapSetupFunc) func(t *testing.T) {
 	return func(t *testing.T) {
 		hashMap := setupFunc(hashMapDefaultSize)
+		expectedTableSize := hashMapDefaultSize
 		data := make([]hashMapValue, hashMapDefaultSize)
 		for i := 0; i < len(data); i++ {
 			key := hashMapKey(i)
 			data[key].data = i
 		}
 		t.Run("Reserve", func(t *testing.T) {
-			if res := hashMapTestReserve(hashMap, hashMapDefaultSize*1.75); res != nil {
+			newSize := int(hashMapDefaultSize * 1.75)
+			if res := hashMapTestReserve(hashMap, newSize); res != nil {
 				if !hashMap.IsStatic() {
 					t.Fatal("dynamic hashMap is expected to successfully reserve")
 				}
+			} else if !hashMap.IsStatic() {
+				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
 			}
 		})
 		t.Run("Insert", func(t *testing.T) {
@@ -64,6 +69,32 @@ func hashMapTest(setupFunc hashMapSetupFunc) func(t *testing.T) {
 					t.Fatalf("expected %v, but got %v", expected, result)
 				}
 			}
+		})
+		t.Run("Count", func(t *testing.T) {
+			expected := len(data)
+			if result := hashMap.Count(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableSize", func(t *testing.T) {
+			expected := expectedTableSize
+			if result := hashMap.GetTableSize(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableUsed", func(t *testing.T) {
+			expected := len(data)
+			if result := hashMap.GetTableUsed(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Full", func(t *testing.T) {
+				expected := false
+				if result := hashMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
 		})
 		t.Run("FindFirst", func(t *testing.T) {
 			for i := range data {
@@ -109,6 +140,14 @@ func hashMapTest(setupFunc hashMapSetupFunc) func(t *testing.T) {
 		})
 		t.Run("RemoveAll", func(t *testing.T) {
 			hashMap.RemoveAll()
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Empty", func(t *testing.T) {
+				expected := true
+				if result := hashMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
 		})
 	}
 }

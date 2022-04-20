@@ -118,8 +118,11 @@ func (c *embeddedHashMap[TKey, T]) Reserve(count int) {
 }
 
 func (c *embeddedHashMap[TKey, T]) GetKey(obj *T) TKey {
-	objLink := c.getLink(obj)
-	return objLink.key.value
+	if objLink := c.getLink(obj); objLink != nil {
+		return objLink.key.value
+	}
+	var empty TKey
+	return empty
 }
 
 func (c *embeddedHashMap[TKey, T]) Count() int {

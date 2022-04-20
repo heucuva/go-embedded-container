@@ -448,19 +448,17 @@ func (c *embeddedMap[TKey, T]) Remove(obj *T) *T {
 }
 
 func (c *embeddedMap[TKey, T]) RemoveFirst() *T {
-	head := c.First()
-	if head == nil {
-		return nil
+	if head := c.First(); head != nil {
+		return c.Remove(head)
 	}
-	return c.Remove(head)
+	return nil
 }
 
 func (c *embeddedMap[TKey, T]) RemoveLast() *T {
-	tail := c.Last()
-	if tail == nil {
-		return nil
+	if tail := c.Last(); tail != nil {
+		return c.Remove(tail)
 	}
-	return c.Remove(tail)
+	return nil
 }
 
 func (c *embeddedMap[TKey, T]) Move(cur *T, newKey TKey) {
@@ -469,7 +467,11 @@ func (c *embeddedMap[TKey, T]) Move(cur *T, newKey TKey) {
 }
 
 func (c *embeddedMap[TKey, T]) GetKey(obj *T) TKey {
-	return c.getLink(obj).key
+	if objLink := c.getLink(obj); objLink != nil {
+		return objLink.key
+	}
+	var empty TKey
+	return empty
 }
 
 func (c *embeddedMap[TKey, T]) Count() int {
