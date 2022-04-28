@@ -31,8 +31,12 @@ func NewHashListDynamic[T any](linkField uintptr) HashList[T] {
 }
 
 type embeddedHashList[T any] struct {
-	hash Hash[T]
 	list List[T]
+	hash Hash[T]
+}
+
+func (c *embeddedHashList[T]) IsStatic() bool {
+	return c.hash.IsStatic()
 }
 
 func (c *embeddedHashList[T]) First() *T {

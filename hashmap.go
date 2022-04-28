@@ -55,6 +55,10 @@ func (c *embeddedHashMap[TKey, T]) getLink(obj *T) *HashMapLink[TKey, T] {
 	return getHashMapLink[TKey](obj, c.linkField)
 }
 
+func (c *embeddedHashMap[TKey, T]) IsStatic() bool {
+	return c.hash.IsStatic()
+}
+
 func (c *embeddedHashMap[TKey, T]) Insert(key TKey, obj *T) *T {
 	hashedKey := newHashKey(key)
 	o := c.hash.Insert(hashedKey.hash, obj)
@@ -85,8 +89,7 @@ func (c *embeddedHashMap[TKey, T]) RemoveAll() {
 }
 
 func (c *embeddedHashMap[TKey, T]) RemoveAllByKey(key TKey) {
-	hashedKey := newHashKey(key)
-	cur := c.hash.FindFirst(hashedKey.hash)
+	cur := c.hash.FindFirst(HashKey(key))
 	for cur != nil {
 		next := c.hash.FindNext(cur)
 		curLink := c.getLink(cur)
@@ -98,8 +101,7 @@ func (c *embeddedHashMap[TKey, T]) RemoveAllByKey(key TKey) {
 }
 
 func (c *embeddedHashMap[TKey, T]) RemoveAllByUniqueKey(key TKey) {
-	hashedKey := newHashKey(key)
-	cur := c.hash.FindFirst(hashedKey.hash)
+	cur := c.hash.FindFirst(HashKey(key))
 	for cur != nil {
 		next := c.hash.FindNext(cur)
 		curLink := c.getLink(cur)
@@ -116,8 +118,11 @@ func (c *embeddedHashMap[TKey, T]) Reserve(count int) {
 }
 
 func (c *embeddedHashMap[TKey, T]) GetKey(obj *T) TKey {
-	objLink := c.getLink(obj)
-	return objLink.key.value
+	if objLink := c.getLink(obj); objLink != nil {
+		return objLink.key.value
+	}
+	var empty TKey
+	return empty
 }
 
 func (c *embeddedHashMap[TKey, T]) Count() int {
@@ -137,8 +142,7 @@ func (c *embeddedHashMap[TKey, T]) IsEmpty() bool {
 }
 
 func (c *embeddedHashMap[TKey, T]) FindFirst(key TKey) *T {
-	hashedKey := newHashKey(key)
-	cur := c.hash.FindFirst(hashedKey.hash)
+	cur := c.hash.FindFirst(HashKey(key))
 	for cur != nil {
 		next := c.hash.FindNext(cur)
 		curLink := c.getLink(cur)

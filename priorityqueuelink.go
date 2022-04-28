@@ -11,6 +11,9 @@ type PriorityQueueLink[P PriorityType] struct {
 }
 
 func getPriorityQueueLink[P PriorityType, T any](obj *T, linkFieldOfs uintptr) *PriorityQueueLink[P] {
+	if obj == nil {
+		return nil
+	}
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*PriorityQueueLink[P])(u)
 }

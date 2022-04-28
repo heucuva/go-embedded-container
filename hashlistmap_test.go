@@ -1,166 +1,321 @@
 package embedded_test
 
 import (
+	"math/rand"
 	"testing"
 	"unsafe"
 
 	embedded "github.com/heucuva/go-embedded-container"
+	"github.com/heucuva/go-embedded-container/internal/util"
 )
 
 type hashListMapEntry struct {
 	data int
-	link embedded.HashListMapLink[int, hashListMapEntry]
+	link embedded.HashListMapLink[hashListMapKey, hashListMapValue]
 }
 
 var hashListMapEntryLinkField = unsafe.Offsetof(hashListMapEntry{}.link)
 
-func TestEmbeddedHashListMapStatic(t *testing.T) {
-	const staticSize = 1000
-	const testSize = int(staticSize * 5.5)
-	const expectedTableUsed = 996
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, staticSize)
-	testEmbeddedHashListMap(t, c, testSize, expectedTableUsed, staticSize, removeTarget)
+const hashListMapDefaultSize = 1000
+
+type (
+	hashListMapKey       int
+	hashListMapValue     hashListMapEntry
+	hashListMapType      embedded.HashListMap[hashListMapKey, hashListMapValue]
+	hashListMapSetupFunc func(size int) hashListMapType
+)
+
+func (h hashListMapValue) Hash() embedded.HashedKeyValue {
+	return embedded.HashedKeyValue(h.data)
 }
 
-func TestEmbeddedHashListMapDynamic(t *testing.T) {
-	const testSize = 5500
-	const expectedTableUsed = 4116
-	const expectedTableSize = 8192 // next power of 2 over 5500
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashListMapDynamic[int, hashListMapEntry](hashListMapEntryLinkField)
-	testEmbeddedHashListMap(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
+func hashListMapSetupStatic(size int) hashListMapType {
+	return embedded.NewHashListMapStatic[hashListMapKey, hashListMapValue](hashListMapEntryLinkField, size)
 }
 
-func BenchmarkEmbeddedHashListMapStatic_InsertLast(b *testing.B) {
-	hash := embedded.NewHashListMapStatic[int, hashListMapEntry](hashListMapEntryLinkField, b.N)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
+func hashListMapSetupDynamic(size int) hashListMapType {
+	return embedded.NewHashListMapDynamic[hashListMapKey, hashListMapValue](hashListMapEntryLinkField)
+}
+
+func TestEmbeddedHashListMap(t *testing.T) {
+	t.Run("Static", hashListMapTest(hashListMapSetupStatic))
+	t.Run("Dynamic", hashListMapTest(hashListMapSetupDynamic))
+}
+
+func hashListMapTest(setupFunc hashListMapSetupFunc) func(t *testing.T) {
+	return func(t *testing.T) {
+		hashListMap := setupFunc(hashListMapDefaultSize)
+		expectedTableSize := hashListMapDefaultSize
+		data := make([]hashListMapValue, hashListMapDefaultSize)
+		for i := 0; i < len(data); i++ {
+			key := hashListMapKey(i)
+			data[key].data = i
+		}
+		t.Run("Reserve", func(t *testing.T) {
+			newSize := int(hashListMapDefaultSize * 1.75)
+			if res := hashListMapTestReserve(hashListMap, newSize); res != nil {
+				if !hashListMap.IsStatic() {
+					t.Fatal("dynamic hashListMap is expected to successfully reserve")
+				}
+			} else if !hashListMap.IsStatic() {
+				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
+			}
+		})
+		t.Run("InsertLast", func(t *testing.T) {
+			for i := 2; i < len(data)-1; i++ {
+				key := hashListMapKey(i)
+				expected := &data[key]
+				if result := hashListMap.InsertLast(key, expected); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("InsertFirst", func(t *testing.T) {
+			key := hashListMapKey(0)
+			expected := &data[key]
+			if result := hashListMap.InsertFirst(key, expected); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("InsertBefore", func(t *testing.T) {
+			key := hashListMapKey(1)
+			expected := &data[key]
+			if result := hashListMap.InsertBefore(key, &data[key+1], expected); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("InsertAfter", func(t *testing.T) {
+			key := hashListMapKey(len(data) - 1)
+			expected := &data[key]
+			if result := hashListMap.InsertAfter(key, &data[key-1], expected); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Count", func(t *testing.T) {
+			expected := len(data)
+			if result := hashListMap.Count(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableSize", func(t *testing.T) {
+			expected := expectedTableSize
+			if result := hashListMap.GetTableSize(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableUsed", func(t *testing.T) {
+			expected := len(data)
+			if result := hashListMap.GetTableUsed(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Full", func(t *testing.T) {
+				expected := false
+				if result := hashListMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+		t.Run("FindFirst", func(t *testing.T) {
+			for i := range data {
+				key := hashListMapKey(i)
+				expected := &data[key]
+				if result := hashListMap.FindFirst(key); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("FindNext", func(t *testing.T) {
+			for i := range data {
+				key := hashListMapKey(i)
+				entry := &data[key]
+				var expected *hashListMapValue
+				if result := hashListMap.FindNext(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("First", func(t *testing.T) {
+			key := hashListMapKey(0)
+			expected := &data[key]
+			if result := hashListMap.First(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Next", func(t *testing.T) {
+			entry := hashListMap.First()
+			key := hashListMapKey(1)
+			expected := &data[key]
+			if result := hashListMap.Next(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Last", func(t *testing.T) {
+			key := hashListMapKey(len(data) - 1)
+			expected := &data[key]
+			if result := hashListMap.Last(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Prev", func(t *testing.T) {
+			key := hashListMapKey(len(data) - 2)
+			entry := hashListMap.Last()
+			expected := &data[key]
+			if result := hashListMap.Prev(entry); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsContained", func(t *testing.T) {
+			t.Run("Contained", func(t *testing.T) {
+				expected := true
+				if result := hashListMap.IsContained(&data[0]); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Uncontained", func(t *testing.T) {
+				expected := false
+				entry := &hashListMapValue{data: 0}
+				if result := hashListMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Nil", func(t *testing.T) {
+				expected := false
+				var entry *hashListMapValue
+				if result := hashListMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+		t.Run("RemoveAll", func(t *testing.T) {
+			hashListMap.RemoveAll()
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Empty", func(t *testing.T) {
+				expected := true
+				if result := hashListMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
 	}
 }
 
-func BenchmarkEmbeddedHashListMapDynamic(b *testing.B) {
-	hash := embedded.NewHashListMapDynamic[int, hashListMapEntry](hashListMapEntryLinkField)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hash.InsertLast(i, &hashListMapEntry{data: i})
+func hashListMapTestReserve(hashListMap hashListMapType, size int) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	hashListMap.Reserve(size)
+	err = nil
+	return
+}
+
+func BenchmarkEmbeddedHashListMap(b *testing.B) {
+	b.Run("Static", hashListMapBench(hashListMapSetupStatic))
+	b.Run("Dynamic", hashListMapBench(hashListMapSetupDynamic))
+}
+
+func hashListMapBench(setupFunc hashListMapSetupFunc) func(b *testing.B) {
+	return func(b *testing.B) {
+		hashListMap := setupFunc(hashListMapDefaultSize)
+		data := make([]hashListMapValue, b.N)
+		for i := 0; i < len(data); i++ {
+			key := hashListMapKey(i)
+			data[key].data = i
+		}
+
+		b.Run("IsStatic", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hashListMap.IsStatic()
+		})
+		b.Run("Reserve", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			_ = hashListMapBenchReserve(hashListMap, int(float64(b.N)*1.75))
+		})
+		b.Run("InsertLast", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := range data {
+				key := hashListMapKey(i)
+				hashListMap.InsertLast(key, &data[key])
+			}
+		})
+		b.Run("FindFirst", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				key := hashListMapKey(i % len(data))
+				_ = hashListMap.FindFirst(key)
+			}
+		})
+		b.Run("FindNext", func(b *testing.B) {
+			key := hashListMapKey(int(rand.Int31()) % len(data))
+			entry := hashListMap.FindFirst(key)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hashListMap.FindNext(entry)
+			}
+		})
+		b.Run("First", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hashListMap.First()
+			}
+		})
+		b.Run("Next", func(b *testing.B) {
+			entry := hashListMap.First()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hashListMap.Next(entry)
+			}
+		})
+		b.Run("Last", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hashListMap.Last()
+			}
+		})
+		b.Run("Prev", func(b *testing.B) {
+			entry := hashListMap.Last()
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hashListMap.Prev(entry)
+			}
+		})
+		b.Run("IsContained", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				key := hashListMapKey(i % len(data))
+				_ = hashListMap.IsContained(&data[key])
+			}
+		})
+		b.Run("RemoveAll", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hashListMap.RemoveAll()
+		})
 	}
 }
 
-func testEmbeddedHashListMap(t *testing.T, c embedded.HashListMap[int, hashListMapEntry], testSize, expectedTableUsed, expectedTableSize int, removeTarget int) {
-	for i := 0; i < testSize; i++ {
-		c.InsertLast(i, &hashListMapEntry{data: i})
+func hashListMapBenchReserve(hashListMap hashListMapType, size int) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	if size > 1000000 {
+		// too big
+		err = "too big"
+		return
 	}
-
-	if c.IsEmpty() {
-		t.Fatal("embedded hash should not be empty")
-	}
-
-	if actualTableSize := c.GetTableSize(); actualTableSize != expectedTableSize {
-		t.Fatalf("unexpected table size (actual %d != expected %d)", actualTableSize, expectedTableSize)
-	}
-
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != expectedTableUsed {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, expectedTableUsed)
-	}
-
-	var removedEntry *hashListMapEntry
-	for i := testSize - 1; i >= 0; i-- {
-		var entry *hashListMapEntry
-		for cur := c.FindFirst(i); cur != nil; cur = c.FindNext(cur) {
-			if cur.data == i {
-				entry = cur
-				break
-			}
-		}
-		if entry == nil {
-			t.Fatal("expected entry not found")
-		}
-
-		if actualKey := c.GetKey(entry); actualKey != i {
-			t.Fatalf("hashed key mismatch detected (actual %d != expected %d)", actualKey, i)
-		}
-
-		if i == removeTarget {
-			if actualEntry := c.Position(i); actualEntry != entry {
-				t.Fatalf("item not found at expected position")
-			}
-			if !c.IsContained(entry) {
-				t.Fatal("embedded hash list map reports that contained item is not present")
-			}
-			removedEntry = c.Remove(entry)
-			if c.IsContained(entry) {
-				t.Fatal("embedded hash list map reports that removed item is present")
-			}
-		}
-	}
-
-	for walk := c.First(); walk != nil; walk = c.Next(walk) {
-		if walk.data == removeTarget {
-			t.Fatal("removed item still present in embedded hash list map")
-		}
-	}
-
-	for walk := c.Last(); walk != nil; walk = c.Prev(walk) {
-		if walk.data == removeTarget {
-			t.Fatal("removed item still present in embedded hash list map")
-		}
-	}
-
-	expectedCount := c.Count()
-
-	if moveItem := c.First(); moveItem != nil {
-		oldKey := c.GetKey(moveItem)
-		newKey := testSize
-		for i := 1; newKey == oldKey; i++ {
-			newKey = testSize + i
-		}
-		c.Move(moveItem, newKey)
-		currentKey := c.GetKey(moveItem)
-		if currentKey != newKey {
-			t.Fatalf("moved item did not move to expected key hash (old %d -> actual %d != expected %d)", oldKey, currentKey, newKey)
-		}
-	} else {
-		t.Fatal("could not find any item in embedded hash list map")
-	}
-
-	if actualCount := c.Count(); actualCount != expectedCount {
-		t.Fatalf("count changed unexpectedly (actual %d != expected %d)", actualCount, expectedCount)
-	}
-
-	c.InsertFirst(removeTarget, removedEntry)
-	c.MoveLast(removedEntry)
-	c.MoveAfter(c.First(), removedEntry)
-	c.MoveBefore(c.Last(), removedEntry)
-	c.MoveFirst(removedEntry)
-
-	if actualFirst := c.RemoveFirst(); actualFirst == nil {
-		t.Fatal("no item at front of embedded hash list map")
-	} else if expectedFirst := removeTarget; actualFirst.data != expectedFirst {
-		t.Fatalf("mismatched item at front of embedded hash list map (actual %d != expected %d)", actualFirst.data, expectedFirst)
-	}
-
-	if actualLast := c.RemoveLast(); actualLast == nil {
-		t.Fatal("no item at front of embedded hash list")
-	} else if expectedLast := testSize - 1; actualLast.data != expectedLast {
-		t.Fatalf("mismatched item at front of embedded hash list map (actual %d != expected %d)", actualLast.data, expectedLast)
-	}
-
-	oldCount := c.Count()
-	c.RemoveAllByKey(1)
-	if newCount := c.Count(); oldCount <= newCount {
-		t.Fatal("could not remove item from embedded hash list map")
-	}
-
-	oldCount = c.Count()
-	c.RemoveAllByUniqueKey(2)
-	if newCount := c.Count(); oldCount <= newCount {
-		t.Fatal("could not remove item from embedded hash list map")
-	}
-
-	c.RemoveAll()
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != 0 {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, 0)
-	}
+	hashListMap.Reserve(size)
+	err = nil
+	return
 }

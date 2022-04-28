@@ -11,6 +11,9 @@ type HashListMapLink[TKey HashMapKeyType, T any] struct {
 }
 
 func getHashListMapLink[TKey HashMapKeyType, T any](obj *T, linkFieldOfs uintptr) *HashListMapLink[TKey, T] {
+	if obj == nil {
+		return nil
+	}
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*HashListMapLink[TKey, T])(u)
 }

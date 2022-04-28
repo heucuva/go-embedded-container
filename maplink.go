@@ -15,6 +15,9 @@ type MapLink[TKey, T any] struct {
 }
 
 func getMapLink[TKey, T any](obj *T, linkFieldOfs uintptr) *MapLink[TKey, T] {
+	if obj == nil {
+		return nil
+	}
 	u := unsafe.Add(unsafe.Pointer(obj), linkFieldOfs)
 	return (*MapLink[TKey, T])(u)
 }

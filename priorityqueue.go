@@ -124,6 +124,9 @@ func (c *embeddedPriorityQueue[P, T]) IsContained(entry *T) bool {
 
 func (c *embeddedPriorityQueue[P, T]) GetPriority(entry *T) *P {
 	entryLink := c.getLink(entry)
+	if entryLink == nil {
+		return nil
+	}
 	spot := int(entryLink.position) - 1
 	if spot >= 0 {
 		return &entryLink.priority

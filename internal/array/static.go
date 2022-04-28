@@ -15,7 +15,7 @@ func (a *staticArray[T]) IsStatic() bool {
 }
 
 func (a *staticArray[T]) Reserve(count int) {
-	// do nothing
+	panic("cannot reserve a count with a static table size")
 }
 
 func (a *staticArray[T]) Size() int {
@@ -24,4 +24,16 @@ func (a *staticArray[T]) Size() int {
 
 func (a *staticArray[T]) Slice() []T {
 	return a.data
+}
+
+func (a *staticArray[T]) At(idx int) T {
+	return a.data[idx]
+}
+
+func (a *staticArray[T]) Ptr(idx int) *T {
+	return &a.data[idx]
+}
+
+func (a *staticArray[T]) Set(idx int, value T) {
+	a.data[idx] = value
 }

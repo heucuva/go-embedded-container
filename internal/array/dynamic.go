@@ -1,5 +1,7 @@
 package array
 
+import "github.com/heucuva/go-embedded-container/internal/util"
+
 type dynamicArray[T any] struct {
 	data     []T
 	minSize  int
@@ -34,10 +36,22 @@ func (a *dynamicArray[T]) Slice() []T {
 	return a.data
 }
 
+func (a *dynamicArray[T]) At(idx int) T {
+	return a.data[idx]
+}
+
+func (a *dynamicArray[T]) Ptr(idx int) *T {
+	return &a.data[idx]
+}
+
+func (a *dynamicArray[T]) Set(idx int, value T) {
+	a.data[idx] = value
+}
+
 func (a *dynamicArray[T]) resize(count int) {
 	dynamicTableOld := a.data
 
-	dynamicSize := int(nextPowerOf2(uint(count)))
+	dynamicSize := int(util.NextPowerOf2(uint(count)))
 	if dynamicSize < a.minSize {
 		dynamicSize = a.minSize
 	}

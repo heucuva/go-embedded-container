@@ -41,8 +41,8 @@ func NewList[T any](linkField uintptr) List[T] {
 type embeddedList[T any] struct {
 	head      *T
 	tail      *T
-	count     int
 	linkField uintptr
+	count     int
 }
 
 func (c *embeddedList[T]) getLink(obj *T) *ListLink[T] {
@@ -100,9 +100,14 @@ func (c *embeddedList[T]) RemoveLast() *T {
 }
 
 func (c *embeddedList[T]) RemoveAll() {
-	for cur := c.tail; cur != nil; cur = c.tail {
-		c.Remove(cur)
+	var prev *T
+	for cur := c.tail; cur != nil; cur = prev {
+		curLink := c.getLink(cur)
+		prev = curLink.prev
+		curLink.next = nil
+		curLink.prev = nil
 	}
+	c.count = 0
 }
 
 func (c *embeddedList[T]) InsertFirst(cur *T) *T {
@@ -196,5 +201,6 @@ func (c *embeddedList[T]) IsEmpty() bool {
 }
 
 func (c *embeddedList[T]) IsContained(cur *T) bool {
-	return c.getLink(cur).isContained(c.linkField, c.head)
+	curLink := c.getLink(cur)
+	return curLink != nil && curLink.isContained(c.linkField, c.head)
 }

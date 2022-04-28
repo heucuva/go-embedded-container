@@ -1,123 +1,241 @@
 package embedded_test
 
 import (
+	"math/rand"
 	"testing"
 	"unsafe"
 
 	embedded "github.com/heucuva/go-embedded-container"
+	"github.com/heucuva/go-embedded-container/internal/util"
 )
 
 type hashMapEntry struct {
 	data int
-	link embedded.HashMapLink[int, hashMapEntry]
+	link embedded.HashMapLink[hashMapKey, hashMapValue]
 }
 
 var hashMapEntryLinkField = unsafe.Offsetof(hashMapEntry{}.link)
 
-func TestEmbeddedHashMapStatic(t *testing.T) {
-	const staticSize = 1000
-	const testSize = int(staticSize * 5.5)
-	const expectedTableUsed = 996
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashMapStatic[int, hashMapEntry](hashMapEntryLinkField, staticSize)
-	testEmbeddedHashMap(t, c, testSize, expectedTableUsed, staticSize, removeTarget)
+const hashMapDefaultSize = 1000
+
+type (
+	hashMapKey       int
+	hashMapValue     hashMapEntry
+	hashMapType      embedded.HashMap[hashMapKey, hashMapValue]
+	hashMapSetupFunc func(size int) hashMapType
+)
+
+func (h hashMapValue) Hash() embedded.HashedKeyValue {
+	return embedded.HashedKeyValue(h.data)
 }
 
-func TestEmbeddedHashMapDynamic(t *testing.T) {
-	const testSize = 5500
-	const expectedTableUsed = 4116
-	const expectedTableSize = 8192 // next power of 2 over 5500
-	const removeTarget = (testSize / 2) - 1
-	c := embedded.NewHashMapDynamic[int, hashMapEntry](hashMapEntryLinkField)
-	testEmbeddedHashMap(t, c, testSize, expectedTableUsed, expectedTableSize, removeTarget)
+func hashMapSetupStatic(size int) hashMapType {
+	return embedded.NewHashMapStatic[hashMapKey, hashMapValue](hashMapEntryLinkField, size)
 }
 
-func BenchmarkEmbeddedHashMapStatic_Insert(b *testing.B) {
-	hash := embedded.NewHashMapStatic[int, hashMapEntry](hashMapEntryLinkField, b.N)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hash.Insert(i, &hashMapEntry{data: i})
-	}
+func hashMapSetupDynamic(size int) hashMapType {
+	return embedded.NewHashMapDynamic[hashMapKey, hashMapValue](hashMapEntryLinkField)
 }
 
-func BenchmarkEmbeddedHashMapDynamic_Insert(b *testing.B) {
-	hash := embedded.NewHashMapDynamic[int, hashMapEntry](hashMapEntryLinkField)
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		hash.Insert(i, &hashMapEntry{data: i})
-	}
+func TestEmbeddedHashMap(t *testing.T) {
+	t.Run("Static", hashMapTest(hashMapSetupStatic))
+	t.Run("Dynamic", hashMapTest(hashMapSetupDynamic))
 }
 
-func testEmbeddedHashMap(t *testing.T, c embedded.HashMap[int, hashMapEntry], testSize, expectedTableUsed, expectedTableSize int, removeTarget int) {
-	for i := 0; i < testSize; i++ {
-		c.Insert(i, &hashMapEntry{data: i})
-	}
-
-	if c.IsEmpty() {
-		t.Fatal("embedded hash should not be empty")
-	}
-
-	if actualTableSize := c.GetTableSize(); actualTableSize != expectedTableSize {
-		t.Fatalf("unexpected table size (actual %d != expected %d)", actualTableSize, expectedTableSize)
-	}
-
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != expectedTableUsed {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, expectedTableUsed)
-	}
-
-	var removedEntry *hashMapEntry
-	for i := testSize - 1; i >= 0; i-- {
-		var entry *hashMapEntry
-		for cur := c.FindFirst(i); cur != nil; cur = c.FindNext(cur) {
-			if cur.data == i {
-				entry = cur
-				break
+func hashMapTest(setupFunc hashMapSetupFunc) func(t *testing.T) {
+	return func(t *testing.T) {
+		hashMap := setupFunc(hashMapDefaultSize)
+		expectedTableSize := hashMapDefaultSize
+		data := make([]hashMapValue, hashMapDefaultSize)
+		for i := 0; i < len(data); i++ {
+			key := hashMapKey(i)
+			data[key].data = i
+		}
+		t.Run("Reserve", func(t *testing.T) {
+			newSize := int(hashMapDefaultSize * 1.75)
+			if res := hashMapTestReserve(hashMap, newSize); res != nil {
+				if !hashMap.IsStatic() {
+					t.Fatal("dynamic hashMap is expected to successfully reserve")
+				}
+			} else if !hashMap.IsStatic() {
+				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
 			}
-		}
-		if entry == nil {
-			t.Fatal("expected entry not found")
-		}
-
-		if actualKey := c.GetKey(entry); actualKey != i {
-			t.Fatalf("hashed key mismatch detected (actual %d != expected %d)", actualKey, i)
-		}
-
-		if i == removeTarget {
-			if !c.IsContained(entry) {
-				t.Fatal("embedded hash reports that contained item is not present")
+		})
+		t.Run("Insert", func(t *testing.T) {
+			for i := 0; i < len(data); i++ {
+				key := hashMapKey(i)
+				expected := &data[key]
+				if result := hashMap.Insert(key, expected); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
 			}
-			removedEntry = c.Remove(entry)
-			if c.IsContained(entry) {
-				t.Fatal("embedded hash reports that removed item is present")
+		})
+		t.Run("Count", func(t *testing.T) {
+			expected := len(data)
+			if result := hashMap.Count(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
 			}
+		})
+		t.Run("GetTableSize", func(t *testing.T) {
+			expected := expectedTableSize
+			if result := hashMap.GetTableSize(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("GetTableUsed", func(t *testing.T) {
+			expected := len(data)
+			if result := hashMap.GetTableUsed(); result != expected {
+				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Full", func(t *testing.T) {
+				expected := false
+				if result := hashMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+		t.Run("FindFirst", func(t *testing.T) {
+			for i := range data {
+				key := hashMapKey(i)
+				expected := &data[key]
+				if result := hashMap.FindFirst(key); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("FindNext", func(t *testing.T) {
+			for i := range data {
+				key := hashMapKey(i)
+				entry := &data[key]
+				var expected *hashMapValue
+				if result := hashMap.FindNext(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			}
+		})
+		t.Run("IsContained", func(t *testing.T) {
+			t.Run("Contained", func(t *testing.T) {
+				expected := true
+				key := hashMapKey(0)
+				if result := hashMap.IsContained(&data[key]); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Uncontained", func(t *testing.T) {
+				expected := false
+				entry := &hashMapValue{data: 0}
+				if result := hashMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("Nil", func(t *testing.T) {
+				expected := false
+				var entry *hashMapValue
+				if result := hashMap.IsContained(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+		t.Run("RemoveAll", func(t *testing.T) {
+			hashMap.RemoveAll()
+		})
+		t.Run("IsEmpty", func(t *testing.T) {
+			t.Run("Empty", func(t *testing.T) {
+				expected := true
+				if result := hashMap.IsEmpty(); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+	}
+}
+
+func hashMapTestReserve(hashMap hashMapType, size int) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	hashMap.Reserve(size)
+	err = nil
+	return
+}
+
+func BenchmarkEmbeddedHashMap(b *testing.B) {
+	b.Run("Static", hashMapBench(hashMapSetupStatic))
+	b.Run("Dynamic", hashMapBench(hashMapSetupDynamic))
+}
+
+func hashMapBench(setupFunc hashMapSetupFunc) func(b *testing.B) {
+	return func(b *testing.B) {
+		hashMap := setupFunc(hashMapDefaultSize)
+		data := make([]hashMapValue, b.N)
+		for i := 0; i < len(data); i++ {
+			key := hashMapKey(i)
+			data[key].data = i
 		}
+
+		b.Run("IsStatic", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hashMap.IsStatic()
+		})
+		b.Run("Reserve", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			_ = hashMapBenchReserve(hashMap, int(float64(b.N)*1.75))
+		})
+		b.Run("Insert", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := range data {
+				key := hashMapKey(i)
+				hashMap.Insert(key, &data[key])
+			}
+		})
+		b.Run("FindFirst", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				key := hashMapKey(i % len(data))
+				_ = hashMap.FindFirst(key)
+			}
+		})
+		b.Run("FindNext", func(b *testing.B) {
+			key := hashMapKey(int(rand.Int31()) % len(data))
+			entry := hashMap.FindFirst(key)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				entry = hashMap.FindNext(entry)
+			}
+		})
+		b.Run("IsContained", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				key := hashMapKey(i % len(data))
+				_ = hashMap.IsContained(&data[key])
+			}
+		})
+		b.Run("RemoveAll", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			hashMap.RemoveAll()
+		})
 	}
+}
 
-	expectedCount := c.Count()
-
-	if moveItem := c.WalkFirst(); moveItem != nil {
-		oldKey := c.GetKey(moveItem)
-		newKey := testSize
-		for i := 1; newKey == oldKey; i++ {
-			newKey = testSize + i
-		}
-		c.Move(moveItem, newKey)
-		currentKey := c.GetKey(moveItem)
-		if currentKey != newKey {
-			t.Fatalf("moved item did not move to expected key hash (old %d -> actual %d != expected %d)", oldKey, currentKey, newKey)
-		}
-	} else {
-		t.Fatal("could not find any item in embedded hash")
+func hashMapBenchReserve(hashMap hashMapType, size int) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	if size > 1000000 {
+		// too big
+		err = "too big"
+		return
 	}
-
-	if actualCount := c.Count(); actualCount != expectedCount {
-		t.Fatalf("count changed unexpectedly (actual %d != expected %d)", actualCount, expectedCount)
-	}
-
-	c.Insert(removeTarget, removedEntry)
-
-	c.RemoveAll()
-	if actualTableUsed := c.GetTableUsed(); actualTableUsed != 0 {
-		t.Fatalf("unexpected table used size (actual %d != expected %d)", actualTableUsed, 0)
-	}
+	hashMap.Reserve(size)
+	err = nil
+	return
 }
