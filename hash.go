@@ -82,7 +82,11 @@ func (c *embeddedHash[T]) Insert(hashValue HashedKeyValue, obj *T) *T {
 }
 
 func (c *embeddedHash[T]) Remove(obj *T) *T {
-	spot := c.calcSpot(c.getLink(obj).hashValue)
+	if obj == nil {
+		return nil
+	}
+	key := c.GetKey(obj)
+	spot := c.calcSpot(key)
 	prev := c.table.Ptr(spot)
 	cur := *prev
 
@@ -96,7 +100,7 @@ func (c *embeddedHash[T]) Remove(obj *T) *T {
 			return cur
 		}
 		prev = &entryLink.hashNext
-		cur = entryLink.hashNext
+		cur = *prev
 	}
 	return nil
 }
