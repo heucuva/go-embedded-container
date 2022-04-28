@@ -89,23 +89,16 @@ func hashSetData[TValue hashValueConstraint](entry *TValue, i int) {
 
 func hashTest[TValue hashValueConstraint](setupFunc hashSetupFunc[TValue]) func(t *testing.T) {
 	return func(t *testing.T) {
-		hash := setupFunc(hashDefaultSize)
-		expectedTableSize := hashDefaultSize
+		expectedTableSize := hashDefaultSize / 2
+		hash := setupFunc(expectedTableSize)
 		data := make([]TValue, hashDefaultSize)
 		for i := range data {
 			entry := &data[i]
 			hashSetData(entry, i)
 		}
-		t.Run("Reserve", func(t *testing.T) {
-			newSize := int(hashDefaultSize * 1.75)
-			if res := hashTestReserve(hash, newSize); res != nil {
-				if !hash.IsStatic() {
-					t.Fatal("dynamic hash is expected to successfully reserve")
-				}
-			} else if !hash.IsStatic() {
-				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
-			}
-		})
+		if !hash.IsStatic() {
+			expectedTableSize = int(util.NextPowerOf2(hashDefaultSize + hashDefaultSize>>2))
+		}
 		t.Run("Insert", func(t *testing.T) {
 			for i := range data {
 				expected := &data[i]
@@ -121,6 +114,24 @@ func hashTest[TValue hashValueConstraint](setupFunc hashSetupFunc[TValue]) func(
 				t.Fatalf("expected %v, but got %v", expected, result)
 			}
 		})
+		t.Run("GetKey", func(t *testing.T) {
+			t.Run("Existing", func(t *testing.T) {
+				entry := &data[len(data)-1]
+				expected := (interface{})(entry).(embedded.Hashable).Hash()
+				if result := hash.GetKey(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("NonExisting", func(t *testing.T) {
+				var ent TValue
+				entry := &ent
+				hashSetData(entry, len(data)+2)
+				expected := embedded.HashedKeyValue(0)
+				if result := hash.GetKey(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
 		t.Run("GetTableSize", func(t *testing.T) {
 			expected := expectedTableSize
 			if result := hash.GetTableSize(); result != expected {
@@ -128,7 +139,10 @@ func hashTest[TValue hashValueConstraint](setupFunc hashSetupFunc[TValue]) func(
 			}
 		})
 		t.Run("GetTableUsed", func(t *testing.T) {
-			expected := len(data)
+			expected := expectedTableSize
+			if expectedTableSize > len(data) {
+				expected = len(data)
+			}
 			if result := hash.GetTableUsed(); result != expected {
 				t.Fatalf("expected %v, but got %v", expected, result)
 			}
@@ -160,16 +174,35 @@ func hashTest[TValue hashValueConstraint](setupFunc hashSetupFunc[TValue]) func(
 			}
 		})
 		t.Run("WalkFirst", func(t *testing.T) {
-			expected := &data[0]
+			i := 0
+			if expectedTableSize < len(data) {
+				i = expectedTableSize
+			}
+			expected := &data[i]
 			if result := hash.WalkFirst(); result != expected {
 				t.Fatalf("expected %v, but got %v", expected, result)
 			}
 		})
 		t.Run("WalkNext", func(t *testing.T) {
 			entry := hash.WalkFirst()
-			expected := &data[1]
+			var expected *TValue
+			if expectedTableSize < len(data) {
+				expected = &data[0]
+			} else {
+				expected = &data[1]
+			}
 			if result := hash.WalkNext(entry); result != expected {
 				t.Fatalf("expected %v, but got %v", expected, result)
+			}
+		})
+		t.Run("Reserve", func(t *testing.T) {
+			newSize := int(hashDefaultSize * 1.75)
+			if res := hashTestReserve(hash, newSize); res != nil {
+				if !hash.IsStatic() {
+					t.Fatal("dynamic hash is expected to successfully reserve")
+				}
+			} else if !hash.IsStatic() {
+				expectedTableSize = int(util.NextPowerOf2(uint(newSize + newSize>>2)))
 			}
 		})
 		t.Run("IsContained", func(t *testing.T) {
@@ -190,6 +223,24 @@ func hashTest[TValue hashValueConstraint](setupFunc hashSetupFunc[TValue]) func(
 				expected := false
 				var entry TValue
 				if result := hash.IsContained(&entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+		})
+		t.Run("Remove", func(t *testing.T) {
+			t.Run("Existing", func(t *testing.T) {
+				entry := &data[len(data)-1]
+				expected := entry
+				if result := hash.Remove(entry); result != expected {
+					t.Fatalf("expected %v, but got %v", expected, result)
+				}
+			})
+			t.Run("NonExisting", func(t *testing.T) {
+				var ent TValue
+				entry := &ent
+				hashSetData(entry, len(data)+2)
+				var expected *TValue
+				if result := hash.Remove(entry); result != expected {
 					t.Fatalf("expected %v, but got %v", expected, result)
 				}
 			})
@@ -230,7 +281,7 @@ func BenchmarkEmbeddedHash(b *testing.B) {
 
 func hashBench(setupFunc hashSetupFunc[hashValueInt]) func(b *testing.B) {
 	return func(b *testing.B) {
-		hash := setupFunc(hashDefaultSize)
+		hash := setupFunc(hashDefaultSize / 2)
 		data := make([]hashValueInt, b.N)
 		for i := range data {
 			entry := &data[i]
@@ -240,7 +291,7 @@ func hashBench(setupFunc hashSetupFunc[hashValueInt]) func(b *testing.B) {
 		b.Run("IsStatic", func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
-			hash.IsStatic()
+			_ = hash.IsStatic()
 		})
 		b.Run("Reserve", func(b *testing.B) {
 			b.ReportAllocs()
@@ -289,6 +340,13 @@ func hashBench(setupFunc hashSetupFunc[hashValueInt]) func(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = hash.IsContained(&data[i%len(data)])
+			}
+		})
+		b.Run("GetKey", func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = hash.GetKey(&data[i%len(data)])
 			}
 		})
 		b.Run("RemoveAll", func(b *testing.B) {
